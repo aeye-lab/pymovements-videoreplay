@@ -10,9 +10,9 @@ Main Components:
 Example Usage:
     from videoreplay import VideoPlayer
 
-    player = VideoPlayer(video_path="stimulus.mp4",
-                     dataset_path="data/ToyDataset",
-                     dataset_name="ToyDataset")
+    # Initialize videoplayer
+    player = VideoPlayer(stimulus_path="video.mp4", gaze_data="path/to/gaze_data.csv")
+    player.play()
 """
 
 from .video_player import VideoPlayer
