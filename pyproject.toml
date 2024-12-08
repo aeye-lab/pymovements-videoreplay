@@ -1,0 +1,45 @@
+[build-system]
+requires = [
+    "setuptools>=61.0.0",
+    "wheel"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pymovements-videoreplay"
+version = "0.1.0"
+description = "Extension for pymovements to replay eye-tracking recordings with gaze overlays."
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+    { name = "Kirthan Gengatharan", email = "kirthan.gengatharan@uzh.ch" },
+    { name = "Norina Braun", email = "norina.braun@uzh.ch" }
+]
+homepage = "https://github.com/aeye-lab/pymovements-videoreplay"
+repository = "https://github.com/aeye-lab/pymovements-videoreplay"
+keywords = ["eye-tracking", "gaze-overlay", "video-replay", "pymovements"]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering",
+    "Typing :: Typed"
+]
+dependencies = [
+    "pymovements>=0.19.0",
+    "matplotlib>=3.8.0,<3.10",
+    "numpy>=1.22.4,<3",
+    "opencv-python>=4.10.0.84"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
