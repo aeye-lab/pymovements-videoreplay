@@ -5,9 +5,15 @@ import pymovements as pm
 import os
 
 
+def _is_image(file_path):
+    """Check if the provided stimulus is an image."""
+    image_extensions = ('.jpg', '.jpeg', '.png', '.bmp', '.tiff')
+    return file_path.lower().endswith(image_extensions)
+
+
 class VideoPlayer:
 
-    def __init__(self, video_path: str, dataset_path: str, dataset_name: str):
+    def __init__(self, stimulus_path: str, dataset_path: str, dataset_name: str):
         """
         Initializes the VideoPlayer.
 
@@ -17,25 +23,34 @@ class VideoPlayer:
         - dataset_name (str): Name of the dataset definition in pymovements.
         """
 
-        self.video_path = video_path
+        self.stimulus_path = stimulus_path
+        self.is_image = _is_image(stimulus_path)
+
         self.dataset = pm.Dataset(definition=dataset_name, path=dataset_path)
         self.dataset.load()
         self.gaze_df = self.dataset.gaze[0].frame.to_pandas()
         self._normalize_timestamps()
 
+        if self.is_image:
+            self.image = cv2.imread(self.stimulus_path)
+
     def _normalize_timestamps(self):
         """Converts timestamps into corresponding frame indices."""
 
+        if self.is_image:
+            self.gaze_df["frame_idx"] = 0  # All gaze points belong to a single frame
+            return
+
         # Ensure correct video path
-        self.video_path = os.path.abspath(self.video_path)
-        print(f"Checking video path: {self.video_path}")
+        self.stimulus_path = os.path.abspath(self.stimulus_path)
+        print(f"Checking video path: {self.stimulus_path}")
 
         # Open video file
-        capture = cv2.VideoCapture(self.video_path)
+        capture = cv2.VideoCapture(self.stimulus_path)
 
         # Debug: Check if the video opens correctly
         if not capture.isOpened():
-            print(f"ERROR: Failed to open video file: {self.video_path}")
+            print(f"ERROR: Failed to open video file: {self.stimulus_path}")
             return  # Exit the function
 
         # Get FPS and total frame count
@@ -71,7 +86,7 @@ class VideoPlayer:
 
     def play(self, speed: float = 1.0):
         """
-        Plays the stimulus video with gaze overlay.
+        Plays the stimulus (video or image) with gaze overlay.
 
         Parameters:
         - speed (float): Playback speed (1.0 = normal, <1.0 = slow, >1.0 = fast).
@@ -84,7 +99,32 @@ class VideoPlayer:
             print(f"ERROR: Required columns {required_columns} not found in gaze_df!")
             return
 
-        capture = cv2.VideoCapture(self.video_path)
+        if self.is_image:
+            self._play_image_stimulus()
+        else:
+            self._play_video_stimulus(speed)
+
+    def _play_image_stimulus(self):
+        """Handles gaze playback for an image stimulus."""
+        if self.image is None:
+            print("ERROR: Failed to load image stimulus.")
+            return
+
+        for _, row in self.gaze_df.iterrows():
+            frame = self.image.copy()  # Keep the original image untouched
+            x, y = int(row['pixel'][0]), int(row['pixel'][1])  # Extract gaze coordinates
+
+            cv2.circle(frame, (x, y), 5, (0, 0, 255), -1)  # Draw red dot
+            cv2.imshow("Eye-Tracking Replay", frame)
+
+            if cv2.waitKey(200) & 0xFF == ord('q'):  # Wait briefly per gaze point
+                break
+
+        cv2.destroyAllWindows()
+
+    def _play_video_stimulus(self, speed: float):
+        """Handles gaze playback for a video stimulus."""
+        capture = cv2.VideoCapture(self.stimulus_path)
 
         frame_idx = 0
         while True:
@@ -127,7 +167,7 @@ class VideoPlayer:
 
     def fixation_navigation(self):
         """Navigates through fixations in the eye-tracking data."""
-        capture = cv2.VideoCapture(self.video_path)
+        capture = cv2.VideoCapture(self.stimulus_path)
         fixations = self.gaze_df[self.gaze_df['stimuli_x'] != -1]  # Filter valid fixations
         idx = 0
 
@@ -160,7 +200,7 @@ class VideoPlayer:
         Parameters:
         - output_path (str): Path where the replay video should be saved.
         """
-        capture = cv2.VideoCapture(self.video_path)
+        capture = cv2.VideoCapture(self.stimulus_path)
         frames = []
 
         for _, row in self.gaze_df.iterrows():
