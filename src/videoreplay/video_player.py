@@ -255,3 +255,75 @@ class VideoPlayer:
 
         capture.release()
         cv2.destroyAllWindows()
+
+    def export_replay(self, filename: str, fps: int = 30):
+        """
+        Exports the gaze replay as an MP4 file (for videos) or GIF (for images).
+
+        The user only needs to provide the filename (without an extension).
+        The correct extension is automatically determined.
+
+        Parameters:
+        - filename (str): Name of the output file (without extension).
+        - fps (int): Frames per second for the exported video.
+        """
+
+        if self.is_image:
+            output_path = f"{filename}.gif"  # Export as GIF for images
+            self._export_replay_image_stimulus(output_path, fps)
+        else:
+            output_path = f"{filename}.mp4"  # Export as MP4 for videos
+            self._export_replay_video_stimulus(output_path, fps)
+
+    def _export_replay_image_stimulus(self, output_path: str, fps: int):
+        """Handles exporting gaze replay for an image stimulus as a GIF."""
+        print("Exporting gaze replay for an image stimulus...")
+        frames = []
+
+        for _, row in self.gaze_df.iterrows():
+            frame = self.image.copy()
+            pixel_coords = _extract_pixel_coordinates(row['pixel'])
+
+            if pixel_coords:
+                x, y = pixel_coords
+                cv2.circle(frame, (x, y), 5, (0, 0, 255), -1)  # Draw red dot
+
+            # Convert to RGB for GIF export
+            frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+
+        # Save as GIF
+        imageio.mimsave(output_path, frames, fps=fps)
+        print(f"Image replay saved as {output_path}")
+
+    def _export_replay_video_stimulus(self, output_path: str, fps: int):
+        """Handles exporting gaze replay for a video stimulus as an MP4."""
+        print("Exporting gaze replay for a video stimulus...")
+
+        capture = cv2.VideoCapture(self.stimulus_path)
+        width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # MP4 codec
+        out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+
+        while True:
+            ret, video_frame = capture.read()
+            if not ret:
+                break  # Stop playback if no more frames are available
+
+            current_frame = int(capture.get(cv2.CAP_PROP_POS_FRAMES))
+
+            # Get gaze data for the current frame
+            gaze_data = self.gaze_df[self.gaze_df['frame_idx'] == current_frame]
+
+            if not gaze_data.empty:
+                pixel_coords = _extract_pixel_coordinates(gaze_data.iloc[0]['pixel'])  # Fixed: Using `self.`
+
+                if pixel_coords:
+                    x, y = pixel_coords
+                    cv2.circle(video_frame, (x, y), 5, (0, 0, 255), -1)  # Draw red dot
+
+            out.write(video_frame)  # Write frame to video
+
+        capture.release()
+        out.release()
+        print(f"Video replay saved as {output_path}")
