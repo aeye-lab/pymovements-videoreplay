@@ -11,6 +11,14 @@ def _is_image(file_path):
     return file_path.lower().endswith(image_extensions)
 
 
+def _extract_pixel_coordinates(pixel_value):
+    """Extracts (x, y) coordinates from the pixel column, ensuring proper format."""
+    if isinstance(pixel_value, (list, tuple, np.ndarray)) and len(pixel_value) == 2:
+        return int(pixel_value[0]), int(pixel_value[1])
+    print(f"Invalid gaze data: {pixel_value}")
+    return None  # Return None for invalid values
+
+
 class VideoPlayer:
 
     def __init__(self, stimulus_path: str, dataset_path: str, dataset_name: str):
@@ -112,8 +120,13 @@ class VideoPlayer:
 
         for _, row in self.gaze_df.iterrows():
             frame = self.image.copy()  # Keep the original image untouched
-            x, y = int(row['pixel'][0]), int(row['pixel'][1])  # Extract gaze coordinates
 
+            # Extract (x, y) coordinates
+            pixel_coords = _extract_pixel_coordinates(row['pixel'])
+            if pixel_coords is None:
+                continue  # Skip invalid gaze points
+
+            x, y = pixel_coords
             cv2.circle(frame, (x, y), 5, (0, 0, 255), -1)  # Draw red dot
             cv2.imshow("Eye-Tracking Replay", frame)
 
@@ -139,19 +152,10 @@ class VideoPlayer:
             gaze_data = self.gaze_df[self.gaze_df['frame_idx'] == current_frame]
 
             if not gaze_data.empty:
-                pixel_value = gaze_data.iloc[0]['pixel']  # Extract pixel value
-
-                # Handle different formats: List, NumPy array, Tuple
-                if isinstance(pixel_value, (list, tuple, np.ndarray)) and len(pixel_value) == 2:
-                    pixel_x, pixel_y = int(pixel_value[0]), int(pixel_value[1])
-
-                    # Debugging output:
-                    print(f"Frame {current_frame} | Gaze: X={pixel_x}, Y={pixel_y}")
-
-                    # Draw the red dot at the gaze position
-                    cv2.circle(video_frame, (pixel_x, pixel_y), 5, (0, 0, 255), -1)
-                else:
-                    print(f"Invalid gaze data at Frame {current_frame}: {pixel_value}")
+                pixel_coords = _extract_pixel_coordinates(gaze_data.iloc[0]['pixel'])
+                if pixel_coords is not None:
+                    x, y = pixel_coords
+                    cv2.circle(video_frame, (x, y), 5, (0, 0, 255), -1)  # Draw red dot
 
             # Show video frame with gaze overlay
             cv2.imshow('Eye-Tracking Replay', video_frame)
@@ -167,17 +171,76 @@ class VideoPlayer:
 
     def fixation_navigation(self):
         """Navigates through fixations in the eye-tracking data."""
-        capture = cv2.VideoCapture(self.stimulus_path)
-        fixations = self.gaze_df[self.gaze_df['stimuli_x'] != -1]  # Filter valid fixations
+        if self.is_image:
+            self._navigate_fixations_on_image()
+        else:
+            self._navigate_fixations_on_video()
+
+    def _navigate_fixations_on_image(self):
+        """Handles fixation navigation for an image stimulus."""
+        if self.image is None:
+            print("ERROR: Failed to load image stimulus.")
+            return
+
+        fixations = self.gaze_df[self.gaze_df['pixel'].notna()]  # Filter valid fixations
+        if fixations.empty:
+            print("ERROR: No valid fixations found!")
+            return
+
         idx = 0
 
         while True:
+            frame = self.image.copy()  # Keep original image untouched
+
+            # Extract (x, y) coordinates
+            pixel_coords = _extract_pixel_coordinates(fixations.iloc[idx]['pixel'])
+            if pixel_coords is None:
+                idx += 1  # Skip invalid fixation
+                continue
+
+            x, y = pixel_coords
+            cv2.circle(frame, (x, y), 8, (0, 255, 0), -1)  # Green dot for fixations
+
+            cv2.imshow("Fixation Navigation", frame)
+            key = cv2.waitKey(0)
+
+            if key == ord('n') and idx < len(fixations) - 1:
+                idx += 1  # Next fixation
+            elif key == ord('p') and idx > 0:
+                idx -= 1  # Previous fixation
+            elif key == ord('q'):
+                break
+
+        cv2.destroyAllWindows()
+
+    def _navigate_fixations_on_video(self):
+        """Handles fixation navigation for a video stimulus."""
+        capture = cv2.VideoCapture(self.stimulus_path)
+        fixations = self.gaze_df[self.gaze_df['pixel'].notna()]  # Filter valid fixations
+
+        if fixations.empty:
+            print("ERROR: No valid fixations found!")
+            return
+
+        idx = 0
+
+        while True:
+            if idx >= len(fixations):
+                print("Warning: No more fixations available!")
+                break
+
             capture.set(cv2.CAP_PROP_POS_FRAMES, fixations.iloc[idx]['frame_idx'])
             frame_read_successful, video_frame = capture.read()
             if not frame_read_successful:
                 break
 
-            x, y = int(fixations.iloc[idx]['x']), int(fixations.iloc[idx]['y'])
+            # Extract (x, y) coordinates
+            pixel_coords = _extract_pixel_coordinates(fixations.iloc[idx]['pixel'])
+            if pixel_coords is None:
+                idx += 1  # Skip invalid fixation
+                continue
+
+            x, y = pixel_coords
             cv2.circle(video_frame, (x, y), 8, (0, 255, 0), -1)  # Green dot for fixations (BGR format)
 
             cv2.imshow('Fixation Navigation', video_frame)
@@ -192,28 +255,3 @@ class VideoPlayer:
 
         capture.release()
         cv2.destroyAllWindows()
-
-    def export_replay(self, output_path: str):
-        """
-        Exports the gaze replay as an MP4 file.
-
-        Parameters:
-        - output_path (str): Path where the replay video should be saved.
-        """
-        capture = cv2.VideoCapture(self.stimulus_path)
-        frames = []
-
-        for _, row in self.gaze_df.iterrows():
-            capture.set(cv2.CAP_PROP_POS_FRAMES, row['frame_idx'])
-            frame_read_successful, video_frame = capture.read()
-            if not frame_read_successful:
-                break
-
-            x, y = int(row['x']), int(row['y'])
-            cv2.circle(video_frame, (x, y), 5, (0, 0, 255), -1)  # Red dot for gaze (BGR format)
-
-            frames.append(cv2.cvtColor(video_frame, cv2.COLOR_BGR2RGB))  # Convert for imageio
-
-        capture.release()
-        imageio.mimsave(output_path, frames, fps=25)
-        print(f"Replay saved to {output_path}")
