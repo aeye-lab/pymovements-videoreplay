@@ -1,7 +1,9 @@
+from pathlib import Path
 import cv2
 import imageio
 import numpy as np
 import pymovements as pm
+import pandas as pd
 import os
 
 
@@ -13,22 +15,73 @@ def _is_image(file_path):
 
 class VideoPlayer:
 
-    def __init__(self, stimulus_path: str, dataset_path: str, dataset_name: str):
+    def __init__(self, stimulus_path: str, dataset_path: str, recording_session: str):
         """
         Initializes the VideoPlayer.
 
         Parameters:
-        - video_path (str): Path to the stimulus video.
+        - stimulus_path (str): Path to the stimulus video.
         - dataset_path (str): Path to the eye-tracking dataset.
-        - dataset_name (str): Name of the dataset definition in pymovements.
+        - recording_session (str): Name of the recording session for filtering.
         """
 
         self.stimulus_path = stimulus_path
+        stimulus_name = os.path.basename(stimulus_path)
+        stimulus_name = os.path.splitext(stimulus_name)[0]  # Remove the extension
         self.is_image = _is_image(stimulus_path)
+        self.gaze_df = None
 
-        self.dataset = pm.Dataset(definition=dataset_name, path=dataset_path)
-        self.dataset.load()
-        self.gaze_df = self.dataset.gaze[0].frame.to_pandas()
+        column_mapping = {
+            "CURRENT_FIX_X": "pixel_x",  # Rename X-coordinate
+            "CURRENT_FIX_Y": "pixel_y",  # Rename Y-coordinate
+            "CURRENT_FIX_DURATION": "duration",  # This will be used to calculate time
+            "page_name": "page_name",  # Used for filtering
+            "RECORDING_SESSION_LABEL": "recording_session"  # Used for filtering
+        }
+
+        try:
+            csv_files = [f for f in Path(dataset_path).glob("*.csv") if "fixfinal" in f.name]
+
+            if not csv_files:
+                print(f"ERROR: No valid CSV file found in {dataset_path}!")
+                self.gaze_df = pd.DataFrame()  # Assign an empty DataFrame
+                return
+
+            # Select the first matching file
+            csv_file = csv_files[0]
+            print(f"Loading gaze data from: {csv_file}")
+
+            # Read CSV into DataFrame
+            self.gaze_df = pd.read_csv(csv_file, usecols=column_mapping.keys())
+
+            # Rename columns
+            self.gaze_df.rename(columns=column_mapping, inplace=True)
+
+            # Filter based on stimulus name
+            if "page_name" in self.gaze_df.columns:
+                self.gaze_df = self.gaze_df[self.gaze_df["page_name"] == stimulus_name].copy()
+
+            if "recording_session" in self.gaze_df.columns:
+                self.gaze_df = self.gaze_df[self.gaze_df["recording_session"] == recording_session].copy()
+
+            if self.gaze_df.empty:
+                print(f"WARNING: No matching gaze data found for stimulus '{stimulus_name}'!")
+                return
+
+            # Compute Cumulative Time (Start at 0)
+            self.gaze_df["time"] = self.gaze_df["duration"].cumsum().shift(fill_value=0)
+
+            # Combine pixel columns
+            self.gaze_df["pixel"] = list(zip(self.gaze_df["pixel_x"], self.gaze_df["pixel_y"]))
+
+        except Exception as e:
+            print(f"ERROR: Failed to load gaze data - {e}")
+            self.gaze_df = pd.DataFrame()  # Assign an empty DataFrame in case of failure
+
+        #self.dataset = pm.Dataset(definition=dataset_name, path=dataset_path)
+        #self.dataset.load()
+        #self.gaze_df = self.dataset.gaze[0].frame.to_pandas()
+
         self._normalize_timestamps()
 
         if self.is_image:
@@ -128,23 +181,23 @@ class VideoPlayer:
         """
 
         # Check if required columns exist
-        print(f"Available columns in gaze_df: {self.gaze_df.columns.tolist()}")
-        required_columns = ['frame_idx', 'pixel']
+        required_columns = ['time', 'pixel', 'frame_idx']
         if not all(col in self.gaze_df.columns for col in required_columns):
             print(f"ERROR: Required columns {required_columns} not found in gaze_df!")
             return
 
         if self.is_image:
-            self._play_image_stimulus()
+            self._play_image_stimulus(speed)
         else:
             self._play_video_stimulus(speed)
 
-    def _play_image_stimulus(self):
+    def _play_image_stimulus(self, speed: float):
         """Handles gaze playback for an image stimulus."""
         if self.image is None:
             print("ERROR: Failed to load image stimulus.")
             return
 
+        self.gaze_df.sort_values(by='time', inplace=True)
         for _, row in self.gaze_df.iterrows():
             frame = self.image.copy()  # Keep the original image untouched
 
@@ -157,7 +210,7 @@ class VideoPlayer:
             cv2.circle(frame, (x, y), 5, (0, 0, 255), -1)  # Draw red dot
             cv2.imshow("Eye-Tracking Replay", frame)
 
-            if cv2.waitKey(200) & 0xFF == ord('q'):  # Wait briefly per gaze point
+            if cv2.waitKey(int(1000 / speed)) & 0xFF == ord('q'):  # Wait briefly per gaze point
                 break
 
         cv2.destroyAllWindows()
@@ -215,21 +268,19 @@ class VideoPlayer:
             return
 
         idx = 0
-
         while True:
             frame = self.image.copy()  # Keep original image untouched
 
             # Extract (x, y) coordinates
             pixel_coords = self._extract_pixel_coordinates(fixations.iloc[idx]['pixel'])
             if pixel_coords is None:
-                idx += 1  # Skip invalid fixation
+                idx = min(idx + 1, len(fixations) - 1)
                 continue
 
             x, y = pixel_coords
             cv2.circle(frame, (x, y), 8, (0, 255, 0), -1)  # Green dot for fixations
-
             cv2.imshow("Fixation Navigation", frame)
-            key = cv2.waitKey(0)
+            key = cv2.waitKey(10)
 
             if key == ord('n') and idx < len(fixations) - 1:
                 idx += 1  # Next fixation
@@ -243,14 +294,13 @@ class VideoPlayer:
     def _navigate_fixations_on_video(self):
         """Handles fixation navigation for a video stimulus."""
         capture = cv2.VideoCapture(self.stimulus_path)
-        fixations = self.gaze_df[self.gaze_df['pixel'].notna()]  # Filter valid fixations
 
+        fixations = self.gaze_df[self.gaze_df['pixel'].notna()]  # Filter valid fixations
         if fixations.empty:
             print("ERROR: No valid fixations found!")
             return
 
         idx = 0
-
         while True:
             if idx >= len(fixations):
                 print("Warning: No more fixations available!")
