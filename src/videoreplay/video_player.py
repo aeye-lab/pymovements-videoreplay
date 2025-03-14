@@ -11,14 +11,6 @@ def _is_image(file_path):
     return file_path.lower().endswith(image_extensions)
 
 
-def _extract_pixel_coordinates(pixel_value):
-    """Extracts (x, y) coordinates from the pixel column, ensuring proper format."""
-    if isinstance(pixel_value, (list, tuple, np.ndarray)) and len(pixel_value) == 2:
-        return int(pixel_value[0]), int(pixel_value[1])
-    print(f"Invalid gaze data: {pixel_value}")
-    return None  # Return None for invalid values
-
-
 class VideoPlayer:
 
     def __init__(self, stimulus_path: str, dataset_path: str, dataset_name: str):
@@ -41,6 +33,41 @@ class VideoPlayer:
 
         if self.is_image:
             self.image = cv2.imread(self.stimulus_path)
+
+    def _extract_pixel_coordinates(self, pixel_value):
+        """
+        Extracts (x, y) coordinates from the pixel column and scales them to fit
+        the stimulus resolution (image or video).
+        """
+
+        # Determine stimulus size
+        if self.is_image:
+            if self.image is None:
+                print("ERROR: Image stimulus is missing!")
+                return None
+            stimulus_height, stimulus_width = self.image.shape[:2]
+        else:
+            capture = cv2.VideoCapture(self.stimulus_path)
+            stimulus_width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+            stimulus_height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            capture.release()
+
+        # Validate and extract gaze coordinates
+        if isinstance(pixel_value, (list, tuple, np.ndarray)) and len(pixel_value) == 2:
+            try:
+                x, y = float(pixel_value[0]), float(pixel_value[1])  # Keep as float before scaling
+
+                # Ensure coordinates fit within the stimulus resolution
+                x = int(np.clip(x, 0, stimulus_width - 1))  # Clip values within width range
+                y = int(np.clip(y, 0, stimulus_height - 1))  # Clip values within height range
+                return x, y
+
+            except (ValueError, TypeError) as e:
+                print(f"ERROR converting pixel data: {e}, Value: {pixel_value}")
+                return None
+
+        print(f"Invalid gaze data: {pixel_value} (Type: {type(pixel_value)})")
+        return None  # Return None for invalid values
 
     def _normalize_timestamps(self):
         """Converts timestamps into corresponding frame indices."""
@@ -122,7 +149,7 @@ class VideoPlayer:
             frame = self.image.copy()  # Keep the original image untouched
 
             # Extract (x, y) coordinates
-            pixel_coords = _extract_pixel_coordinates(row['pixel'])
+            pixel_coords = self._extract_pixel_coordinates(row['pixel'])
             if pixel_coords is None:
                 continue  # Skip invalid gaze points
 
@@ -152,7 +179,7 @@ class VideoPlayer:
             gaze_data = self.gaze_df[self.gaze_df['frame_idx'] == current_frame]
 
             if not gaze_data.empty:
-                pixel_coords = _extract_pixel_coordinates(gaze_data.iloc[0]['pixel'])
+                pixel_coords = self._extract_pixel_coordinates(gaze_data.iloc[0]['pixel'])
                 if pixel_coords is not None:
                     x, y = pixel_coords
                     cv2.circle(video_frame, (x, y), 5, (0, 0, 255), -1)  # Draw red dot
@@ -193,7 +220,7 @@ class VideoPlayer:
             frame = self.image.copy()  # Keep original image untouched
 
             # Extract (x, y) coordinates
-            pixel_coords = _extract_pixel_coordinates(fixations.iloc[idx]['pixel'])
+            pixel_coords = self._extract_pixel_coordinates(fixations.iloc[idx]['pixel'])
             if pixel_coords is None:
                 idx += 1  # Skip invalid fixation
                 continue
@@ -235,7 +262,7 @@ class VideoPlayer:
                 break
 
             # Extract (x, y) coordinates
-            pixel_coords = _extract_pixel_coordinates(fixations.iloc[idx]['pixel'])
+            pixel_coords = self._extract_pixel_coordinates(fixations.iloc[idx]['pixel'])
             if pixel_coords is None:
                 idx += 1  # Skip invalid fixation
                 continue
@@ -282,7 +309,7 @@ class VideoPlayer:
 
         for _, row in self.gaze_df.iterrows():
             frame = self.image.copy()
-            pixel_coords = _extract_pixel_coordinates(row['pixel'])
+            pixel_coords = self._extract_pixel_coordinates(row['pixel'])
 
             if pixel_coords:
                 x, y = pixel_coords
@@ -316,7 +343,7 @@ class VideoPlayer:
             gaze_data = self.gaze_df[self.gaze_df['frame_idx'] == current_frame]
 
             if not gaze_data.empty:
-                pixel_coords = _extract_pixel_coordinates(gaze_data.iloc[0]['pixel'])  # Fixed: Using `self.`
+                pixel_coords = self._extract_pixel_coordinates(gaze_data.iloc[0]['pixel'])  # Fixed: Using `self.`
 
                 if pixel_coords:
                     x, y = pixel_coords
