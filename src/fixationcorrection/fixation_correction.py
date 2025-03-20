@@ -1,130 +1,115 @@
 import cv2
 import pandas as pd
-import numpy as np
-
+import os
 
 class FixationCorrection:
-    def __init__(self, csv_file, window_width=800, window_height=600, step_size=10):
-        # Initialize the class with file path and window dimensions
-        self.data = None
-        self.csv_file = csv_file
-        self.window_width = window_width
-        self.window_height = window_height
-        self.step_size = step_size
-        self.coordinates_updated = False
-        self.current_index = 1
+    def __init__(self, image_path, pandas_dataframe, title=None):
+        self.image_path = image_path
+        self.pandas_dataframe = pandas_dataframe
+        self.image = cv2.imread(self.image_path)
+        self.current_fixation_index = 0  # Index of the current active circle
+        self.fixation_coordinates = None  # Fixations for the current image
+        self.title = title
 
-        # Load the CSV data
-        self.load_data()
+        self.get_xy_coordinates()
 
-        # Set the initial position of the circle
-        self.current_x = round(self.x_coords[self.current_index])
-        self.current_y = round(self.y_coords[self.current_index])
+    def get_xy_coordinates(self):
+        xy_coordinates = list(zip(self.pandas_dataframe['CURRENT_FIX_X'], self.pandas_dataframe['CURRENT_FIX_Y']))
+        xy_int_coordinates = [(int(x), int(y)) for x, y in xy_coordinates]
+        self.fixation_coordinates = xy_int_coordinates
 
-    def load_data(self):
-        # Load the CSV file and process coordinates
-        self.data = pd.read_csv(self.csv_file)
-        self.data['CURRENT_FIX_X'] = self.data['CURRENT_FIX_X'].apply(self.convert_comma_to_float)
-        self.data['CURRENT_FIX_Y'] = self.data['CURRENT_FIX_Y'].apply(self.convert_comma_to_float)
+    def draw_points_on_image(self):
+        # Draw all points on the image
+        self.image = cv2.imread(self.image_path)
 
-        # Extract the necessary columns
-        self.timestamps = self.data['CURRENT_FIX_INDEX']
-        self.x_coords = self.data['CURRENT_FIX_X']
-        self.y_coords = self.data['CURRENT_FIX_X']
+        for i, (x, y) in enumerate(self.fixation_coordinates):
+            color = (255, 255, 0) if i == self.current_fixation_index else (0, 0, 255)
+            cv2.circle(self.image, (x, y), radius=10, color=color, thickness=1)# Circle for points
+            if i < len(self.fixation_coordinates) - 1:
+                next_x, next_y = self.fixation_coordinates[i + 1]
+                cv2.line(self.image, (next_x, next_y), (x, y), color=color, thickness=1)
+        return self.image
 
-    @staticmethod
-    def convert_comma_to_float(value):
-        """Convert values with comma to float."""
-        return float(value.replace(',', '.'))
+    def move_point(self, direction):
+        # Move the current active point in the specified direction
+        x, y = self.fixation_coordinates[self.current_fixation_index]
+        if direction == 'up':
+            self.fixation_coordinates[self.current_fixation_index] = (x, y - 10)  # Move up (decrease y)
+        elif direction == 'down':
+            self.fixation_coordinates[self.current_fixation_index] = (x, y + 10)  # Move down (increase y)
+        elif direction == 'left':
+            self.fixation_coordinates[self.current_fixation_index] = (x - 10, y)  # Move left (decrease x)
+        elif direction == 'right':
+            self.fixation_coordinates[self.current_fixation_index] = (x + 10, y)  # Move right (increase x)
 
-    def draw_circle(self):
-        """Draw the circle and coordinates on the window."""
-        img = 255 * np.ones(shape=[self.window_height, self.window_width, 3], dtype=np.uint8)
 
-        # Draw the circle at the current position
-        radius = 20
-        color = (0, 0, 255)  # Red in BGR
-        thickness = -1  # Filled circle
-        cv2.circle(img, (self.current_x, self.current_y), radius, color, thickness)
+    def handle_key(self, key):
+        if key == ord('w'):  # Move up
+            self.move_point('up')
+        elif key == ord('s'):  # Move down
+            self.move_point('down')
+        elif key == ord('a'):  # Move left
+            self.move_point('left')
+        elif key == ord('d'):  # Move right
+            self.move_point('right')
+        elif key == ord('n'):  # Go to the next point
+            self.current_fixation_index += 1
+            if self.current_fixation_index >= len(self.fixation_coordinates):
+                self.current_fixation_index = 0  # Loop back to the first point
+        elif key == ord('p'): #Go to previous point
+            self.current_fixation_index -= 1
+        elif key == ord('q'):  # Exit editing (optional)
+            return False
+        return True
 
-        # Show the image
-        cv2.imshow("FixationCorrection", img)
+    def edit_points(self):
+        while self.current_fixation_index < len(self.fixation_coordinates):
+            # Draw the points on the image
+            image_with_points = self.draw_points_on_image()
 
-    def move_circle(self, key):
-        """Move the circle based on the key pressed."""
-        if key == ord('d'):  # 'D' key to move right
-            self.current_x += self.step_size
-            self.coordinates_updated = True
-        elif key == ord('a'):  # 'A' key to move left
-            self.current_x -= self.step_size
-            self.coordinates_updated = True
-        elif key == ord('s'):  # 'S' key to move down
-            self.current_y += self.step_size
-            self.coordinates_updated = True
-        elif key == ord('w'):  # 'W' key to move up
-            self.current_y -= self.step_size
-            self.coordinates_updated = True
+            # Display the image with the overlaid points
+            cv2.imshow(f'Page {self.image_path}', image_with_points)
+            cv2.setWindowTitle(f'Page {self.image_path}', self.image_path[:-4] + ' ' + self.title)
 
-    def save_coordinates(self):
-        """Save the updated coordinates."""
-        self.x_coords[self.current_index] = self.current_x
-        self.y_coords[self.current_index] = self.current_y
-        print(
-            f"Coordinates for timestamp {self.timestamps[self.current_index]} saved: ({self.current_x}, {self.current_y})")
-        self.coordinates_updated = False  # Reset the flag
+            # Wait for a key press to move or select next point
+            key = cv2.waitKey(0) & 0xFF  # Get key press
 
-    def iterate_timestamps(self, key):
-        """Iterate through the timestamps based on key presses."""
-        if key == ord('n'):  # Right arrow key
-            if self.current_index < len(self.timestamps) - 1:
-                self.current_index += 1
-                self.current_x = round(self.x_coords[self.current_index])
-                self.current_y = round(self.y_coords[self.current_index])
-            self.draw_circle()
+            if not self.handle_key(key):  # Handle the key press
+                cv2.destroyAllWindows()
+                return
 
-        elif key == ord('p'):  # Left arrow key
-            if self.current_index > 0:
-                self.current_index -= 1
-                self.current_x = round(self.x_coords[self.current_index])
-                self.current_y = round(self.y_coords[self.current_index])
-            self.draw_circle()
 
-    def run(self):
-        """Start the interactive window and handle key events."""
-        while True:
-            key = cv2.waitKey(0)  # Wait for a key press
-
-            # Move the circle using the arrow or WASD keys
-            self.move_circle(key)
-
-            # Save coordinates with 's' key
-            if key == ord('k') and self.coordinates_updated:
-                self.save_coordinates()
-
-            # Navigate through timestamps with left/right arrow keys
-            self.iterate_timestamps(key)
-
-            # Press 'q' to exit the loop
-            if key == ord('q'):
-                break
-
-            # Redraw the circle after each key press
-            self.draw_circle()
-
-        # Release OpenCV windows
         cv2.destroyAllWindows()
 
-    def save_data(self, output_file="updated_coordinates.csv"):
-        """Save the updated coordinates to a CSV file."""
-        self.data['CURRENT_FIX_X'] = self.x_coords
-        self.data['CURRENT_FIX_Y'] = self.y_coords
-        self.data.to_csv(output_file, index=False)
 
 
-# Example of how to use the class:
-if __name__ == "__main__":
-    editor = FixationCorrection('data.csv')  # Replace with your CSV file path
-    editor.run()
 
-    # Optionally, save the updated coordinates to a new CSV
-   # editor.save_data("updated_coordinates.csv")
+class DataPreparation:
+    def __init__(self, csv_file, image_row_name, session_row_name, image_folder):
+        self.csv_file = csv_file
+        self.dataframes = {}
+        self.image_row_name = image_row_name
+        self.session_row_name = session_row_name
+        self.image_folder = image_folder
+        self.image_list = os.listdir(self.image_folder)
+
+    def prepareData(self):
+            raw_data = pd.read_csv(self.csv_file)
+            # Drop the entries where there is no corresponding image
+            dropped = raw_data[(raw_data['page_name'] + '.png').isin(self.image_list)]
+            grouped_data = dropped.groupby([self.image_row_name, self.session_row_name])
+            for (image, session), group in grouped_data:
+                self.dataframes[(image, session)] = group
+            return self.dataframes
+
+
+
+
+prepared = DataPreparation('18sat_fixfinal.csv', 'page_name', 'RECORDING_SESSION_LABEL', 'reading screenshot')
+prep = prepared.prepareData()
+
+for entry in prep:
+    df = prep[entry]
+    image_name = prep[entry]['page_name'].iloc[0]
+    fix = FixationCorrection(image_name + '.png', df, df['RECORDING_SESSION_LABEL'].iloc[0])
+    fix.edit_points()
