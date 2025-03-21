@@ -5,12 +5,6 @@ import pandas as pd
 import os
 
 
-def _is_image(file_path):
-    """Check if the provided stimulus is an image."""
-    image_extensions = ('.jpg', '.jpeg', '.png', '.bmp', '.tiff')
-    return file_path.lower().endswith(image_extensions)
-
-
 class VideoPlayer:
 
     def __init__(self, stimulus_path: str, dataset_path: str, recording_session: str):
@@ -26,7 +20,7 @@ class VideoPlayer:
         self.stimulus_path = stimulus_path
         stimulus_name = os.path.basename(stimulus_path)
         stimulus_name = os.path.splitext(stimulus_name)[0]  # Remove the extension
-        self.is_image = _is_image(stimulus_path)
+        self.is_image = self._is_image()
         self.gaze_df = None
 
         column_mapping = {
@@ -80,6 +74,11 @@ class VideoPlayer:
 
         if self.is_image:
             self.image = cv2.imread(self.stimulus_path)
+
+    def _is_image(self):
+        """Check if the provided stimulus is an image."""
+        image_extensions = ('.jpg', '.jpeg', '.png', '.bmp', '.tiff')
+        return self.stimulus_path.lower().endswith(image_extensions)
 
     def _extract_pixel_coordinates(self, pixel_value):
         """
@@ -151,8 +150,8 @@ class VideoPlayer:
         self.gaze_df['frame_idx'] = np.clip((self.gaze_df['normalized_time'] * fps).astype(int), 0, frame_count - 1)
 
         print("frame_idx added!")
-        print("🕒 Min Frame Index:", self.gaze_df["frame_idx"].min())
-        print("🕒 Max Frame Index:", self.gaze_df["frame_idx"].max())
+        print("Min Frame Index:", self.gaze_df["frame_idx"].min())
+        print("Max Frame Index:", self.gaze_df["frame_idx"].max())
 
     def play(self, speed: float = 1.0):
         """
@@ -352,7 +351,7 @@ class VideoPlayer:
             out.write(frame)
 
         out.release()
-        print(f"✅ Image-based replay exported as MP4: {output_path}")
+        print(f"Image-based replay exported as MP4: {output_path}")
 
     def _export_replay_video_stimulus(self, output_path: str, fps: int):
         """Handles exporting gaze replay for a video stimulus as an MP4."""
