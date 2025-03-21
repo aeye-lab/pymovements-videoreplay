@@ -1,8 +1,6 @@
 from pathlib import Path
 import cv2
-import imageio
 import numpy as np
-import pymovements as pm
 import pandas as pd
 import os
 
@@ -78,10 +76,6 @@ class VideoPlayer:
             print(f"ERROR: Failed to load gaze data - {e}")
             self.gaze_df = pd.DataFrame()  # Assign an empty DataFrame in case of failure
 
-        #self.dataset = pm.Dataset(definition=dataset_name, path=dataset_path)
-        #self.dataset.load()
-        #self.gaze_df = self.dataset.gaze[0].frame.to_pandas()
-
         self._normalize_timestamps()
 
         if self.is_image:
@@ -136,25 +130,14 @@ class VideoPlayer:
         # Open video file
         capture = cv2.VideoCapture(self.stimulus_path)
 
-        # Debug: Check if the video opens correctly
-        if not capture.isOpened():
-            print(f"ERROR: Failed to open video file: {self.stimulus_path}")
-            return  # Exit the function
-
         # Get FPS and total frame count
         fps = capture.get(cv2.CAP_PROP_FPS)
         frame_count = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
         capture.release()
 
-        # Debug: Ensure valid FPS and frame count
-        if abs(fps) < 1e-6 or frame_count == 0:  # Floating-point numbers (fps) should not be compared using == directly
-            print(f"ERROR: FPS is {fps}, Total Frames: {frame_count}")
-            return  # Exit the function
-
         print(f"Video loaded successfully! FPS: {fps}, Total Frames: {frame_count}")
 
         # Check if required columns exist
-        print(f"Available columns in gaze_df: {self.gaze_df.columns.tolist()}")
         required_columns = ['time']
         if not all(col in self.gaze_df.columns for col in required_columns):
             print(f"ERROR: Required columns {required_columns} not found in gaze_df!")
@@ -167,8 +150,7 @@ class VideoPlayer:
         # Convert timestamps to frame indices using FPS
         self.gaze_df['frame_idx'] = np.clip((self.gaze_df['normalized_time'] * fps).astype(int), 0, frame_count - 1)
 
-        print("frame_idx added! (Now properly scaled)")
-        print(self.gaze_df[['time', 'normalized_time', 'frame_idx']].head())  # Debugging output
+        print("frame_idx added!")
         print("🕒 Min Frame Index:", self.gaze_df["frame_idx"].min())
         print("🕒 Max Frame Index:", self.gaze_df["frame_idx"].max())
 
@@ -271,7 +253,6 @@ class VideoPlayer:
         while True:
             frame = self.image.copy()  # Keep original image untouched
 
-            # Extract (x, y) coordinates
             pixel_coords = self._extract_pixel_coordinates(fixations.iloc[idx]['pixel'])
             if pixel_coords is None:
                 idx = min(idx + 1, len(fixations) - 1)
@@ -311,7 +292,6 @@ class VideoPlayer:
             if not frame_read_successful:
                 break
 
-            # Extract (x, y) coordinates
             pixel_coords = self._extract_pixel_coordinates(fixations.iloc[idx]['pixel'])
             if pixel_coords is None:
                 idx += 1  # Skip invalid fixation
@@ -335,7 +315,7 @@ class VideoPlayer:
 
     def export_replay(self, filename: str, fps: int = 30):
         """
-        Exports the gaze replay as an MP4 file (for videos) or GIF (for images).
+        Exports the gaze replay as an MP4 file (for both videos and images).
 
         The user only needs to provide the filename (without an extension).
         The correct extension is automatically determined.
@@ -345,17 +325,21 @@ class VideoPlayer:
         - fps (int): Frames per second for the exported video.
         """
 
+        output_path = f"{filename}.mp4"
         if self.is_image:
-            output_path = f"{filename}.gif"  # Export as GIF for images
             self._export_replay_image_stimulus(output_path, fps)
         else:
-            output_path = f"{filename}.mp4"  # Export as MP4 for videos
             self._export_replay_video_stimulus(output_path, fps)
 
     def _export_replay_image_stimulus(self, output_path: str, fps: int):
-        """Handles exporting gaze replay for an image stimulus as a GIF."""
+        """Exports gaze replay from image stimulus as an MP4 video."""
         print("Exporting gaze replay for an image stimulus...")
-        frames = []
+
+        height, width = self.image.shape[:2]
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+
+        self.gaze_df.sort_values(by='time', inplace=True)
 
         for _, row in self.gaze_df.iterrows():
             frame = self.image.copy()
@@ -363,14 +347,12 @@ class VideoPlayer:
 
             if pixel_coords:
                 x, y = pixel_coords
-                cv2.circle(frame, (x, y), 5, (0, 0, 255), -1)  # Draw red dot
+                cv2.circle(frame, (x, y), 5, (0, 0, 255), -1)
 
-            # Convert to RGB for GIF export
-            frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+            out.write(frame)
 
-        # Save as GIF
-        imageio.mimsave(output_path, frames, fps=fps)
-        print(f"Image replay saved as {output_path}")
+        out.release()
+        print(f"✅ Image-based replay exported as MP4: {output_path}")
 
     def _export_replay_video_stimulus(self, output_path: str, fps: int):
         """Handles exporting gaze replay for a video stimulus as an MP4."""
@@ -393,7 +375,7 @@ class VideoPlayer:
             gaze_data = self.gaze_df[self.gaze_df['frame_idx'] == current_frame]
 
             if not gaze_data.empty:
-                pixel_coords = self._extract_pixel_coordinates(gaze_data.iloc[0]['pixel'])  # Fixed: Using `self.`
+                pixel_coords = self._extract_pixel_coordinates(gaze_data.iloc[0]['pixel'])
 
                 if pixel_coords:
                     x, y = pixel_coords
@@ -403,4 +385,4 @@ class VideoPlayer:
 
         capture.release()
         out.release()
-        print(f"Video replay saved as {output_path}")
+        print(f"Video-based replay exported as MP4: {output_path}")
