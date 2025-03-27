@@ -22,16 +22,17 @@ class VideoPlayer:
         Path to the stimulus image or video file.
     dataset_path : str
         Path to the directory containing the eye-tracking CSV data.
-    recording_session : str
-        Label of the recording session used to filter the dataset.
+    recording_sessions : list[str]
+        List of recording session labels used to filter the dataset.
     """
 
-    def __init__(self, stimulus_path: str, dataset_path: str, recording_session: str):
+    def __init__(self, stimulus_path: str, dataset_path: str, recording_sessions: list[str]):
         self.stimulus_path = stimulus_path
         stimulus_name = os.path.basename(stimulus_path)
         stimulus_name = os.path.splitext(stimulus_name)[0]  # Remove the extension
         self.is_image = self._is_image()
-        self.gaze_df: pd.DataFrame = pd.DataFrame()
+        self.colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (0, 255, 255), (255, 0, 255)]
+        self.gaze_dfs: list[pd.DataFrame] = []
 
         column_mapping = {
             'CURRENT_FIX_X': 'pixel_x',  # Rename X-coordinate
@@ -46,43 +47,36 @@ class VideoPlayer:
 
             if not csv_files:
                 print(f"ERROR: No valid CSV file found in {dataset_path}!")
-                self.gaze_df = pd.DataFrame()  # Assign an empty DataFrame
                 return
 
-            # Select the first matching file
             csv_file = csv_files[0]
             print(f"Loading gaze data from: {csv_file}")
 
-            # Read CSV into DataFrame
-            self.gaze_df = pd.read_csv(csv_file, usecols=list(column_mapping.keys()))
+            base_df = pd.read_csv(csv_file, usecols=list(column_mapping.keys()))
+            base_df.rename(columns=column_mapping, inplace=True)
 
-            # Rename columns
-            self.gaze_df.rename(columns=column_mapping, inplace=True)
-
-            # Filter based on stimulus name
-            if 'page_name' in self.gaze_df.columns:
-                self.gaze_df = self.gaze_df[self.gaze_df['page_name'] == stimulus_name].copy()
-
-            if 'recording_session' in self.gaze_df.columns:
-                self.gaze_df = self.gaze_df[
-                    self.gaze_df['recording_session'] == recording_session
+            for session in recording_sessions:
+                session_df = base_df[
+                    (base_df['page_name'] == stimulus_name)
+                    & (base_df['recording_session'] == session)
                 ].copy()
 
-            if self.gaze_df.empty:
-                print(f"WARNING: No matching gaze data found for stimulus '{stimulus_name}'!")
-                return
+                if session_df.empty:
+                    print(f"WARNING: No data for session '{session}' and stimulus '{stimulus_name}' found")
+                    continue
 
-            # Compute Cumulative Time (Start at 0)
-            self.gaze_df['time'] = self.gaze_df['duration'].cumsum().shift(fill_value=0)
+                # Compute Cumulative Time (Start at 0)
+                session_df['time'] = session_df['duration'].cumsum().shift(fill_value=0)
+                session_df.sort_values(by='time', inplace=True)
 
-            # Combine pixel columns
-            self.gaze_df['pixel'] = list(zip(self.gaze_df['pixel_x'], self.gaze_df['pixel_y']))
+                # Combine pixel columns
+                session_df['pixel'] = list(zip(session_df['pixel_x'], session_df['pixel_y']))
+
+                self._normalize_timestamps(session_df)
+                self.gaze_dfs.append(session_df)
 
         except (pd.errors.ParserError, FileNotFoundError) as e:
             print(f"ERROR: Failed to load gaze data - {e}")
-            self.gaze_df = pd.DataFrame()  # Assign an empty DataFrame in case of failure
-
-        self._normalize_timestamps()
 
         if self.is_image:
             self.image = cv2.imread(self.stimulus_path)
@@ -113,9 +107,7 @@ class VideoPlayer:
                 x, y = float(pixel_value[0]), float(pixel_value[1])
 
                 # Ensure coordinates fit within the stimulus resolution
-                # Clip values within width range
                 x = int(np.clip(x, 0, stimulus_width - 1))
-                # Clip values within height range
                 y = int(np.clip(y, 0, stimulus_height - 1))
                 return x, y
 
@@ -126,18 +118,17 @@ class VideoPlayer:
         print(f"Invalid gaze data: {pixel_value} (Type: {type(pixel_value)})")
         return None
 
-    def _normalize_timestamps(self):
+    def _normalize_timestamps(self, df: pd.DataFrame):
         """Convert timestamps into corresponding frame indices."""
         if self.is_image:
             # All gaze points belong to a single frame
-            self.gaze_df['frame_idx'] = 0
+            df['frame_idx'] = 0
             return
 
         self.stimulus_path = os.path.abspath(self.stimulus_path)
         print(f"Checking video path: {self.stimulus_path}")
 
         capture = cv2.VideoCapture(self.stimulus_path)
-
         fps = capture.get(cv2.CAP_PROP_FPS)
         frame_count = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
         capture.release()
@@ -145,23 +136,16 @@ class VideoPlayer:
         print(f"Video loaded successfully! FPS: {fps}, Total Frames: {frame_count}")
 
         required_columns = ['time']
-        if not all(col in self.gaze_df.columns for col in required_columns):
+        if not all(col in df.columns for col in required_columns):
             print(f"ERROR: Required columns {required_columns} not found in gaze_df!")
             return
 
         # Normalize timestamps: shift them to start from 0
-        min_time = self.gaze_df['time'].min()  # Get the first timestamp
-        self.gaze_df['normalized_time'] = (
-            self.gaze_df['time'] - min_time
-        ) / 1000.0  # Convert ms → s
+        min_time = df['time'].min()  # Get the first timestamp
+        df['normalized_time'] = (df['time'] - min_time) / 1000.0  # Convert ms → s
 
         # Convert timestamps to frame indices using FPS
-        self.gaze_df['frame_idx'] = np.clip(
-            (self.gaze_df['normalized_time'] * fps).astype(int), 0, frame_count - 1
-        )
-
-        print('Min Frame Index:', self.gaze_df['frame_idx'].min())
-        print('Max Frame Index:', self.gaze_df['frame_idx'].max())
+        df['frame_idx'] = np.clip((df['normalized_time'] * fps).astype(int), 0, frame_count - 1)
 
     def play(self, speed: float = 1.0) -> None:
         """Play the stimulus (video or image) with gaze overlay.
@@ -172,9 +156,8 @@ class VideoPlayer:
             Playback speed multiplier. Default is 1.0.
             Use values < 1.0 to slow down or > 1.0 to speed up playback.
         """
-        required_columns = ['time', 'pixel', 'frame_idx']
-        if not all(col in self.gaze_df.columns for col in required_columns):
-            print(f"ERROR: Required columns {required_columns} not found in gaze_df!")
+        if not self.gaze_dfs:
+            print("ERROR: No gaze data loaded!")
             return
 
         if self.is_image:
@@ -188,19 +171,11 @@ class VideoPlayer:
             print('ERROR: Failed to load image stimulus.')
             return
 
-        self.gaze_df.sort_values(by='time', inplace=True)
-        for _, row in self.gaze_df.iterrows():
-            frame = self.image.copy()  # Keep the original image untouched
+        for gaze_idx in range(max(len(df) for df in self.gaze_dfs)):
+            frame = self.image.copy()
+            self._overlay_gaze_on_image(frame, gaze_idx)
 
-            pixel_coords = self._extract_pixel_coordinates(row['pixel'])
-            if pixel_coords is None:
-                continue  # Skip invalid gaze points
-
-            x, y = pixel_coords
-            cv2.circle(frame, (x, y), 5, (0, 0, 255), -1)
             cv2.imshow('Eye-Tracking Replay', frame)
-
-            # Wait briefly per gaze point
             if cv2.waitKey(int(1000 / speed)) & 0xFF == ord('q'):
                 break
 
@@ -213,23 +188,14 @@ class VideoPlayer:
         frame_idx = 0
         while True:
             capture.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
-            ret, video_frame = capture.read()
+            ret, frame = capture.read()
             if not ret:
                 break  # Stop playback if no more frames are available
 
             current_frame = int(capture.get(cv2.CAP_PROP_POS_FRAMES))
-            gaze_data = self.gaze_df[self.gaze_df['frame_idx'] == current_frame]
+            self._overlay_gaze_on_video(frame, current_frame)
 
-            if not gaze_data.empty:
-                pixel_coords = self._extract_pixel_coordinates(gaze_data.iloc[0]['pixel'])
-                if pixel_coords is not None:
-                    x, y = pixel_coords
-                    cv2.circle(video_frame, (x, y), 5, (0, 0, 255), -1)
-
-            # Show video frame with gaze overlay
-            cv2.imshow('Eye-Tracking Replay', video_frame)
-
-            # Exit playback on 'q' press
+            cv2.imshow('Eye-Tracking Replay', frame)
             if cv2.waitKey(int(1000 / (speed * 30))) & 0xFF == ord('q'):
                 break
 
@@ -350,16 +316,10 @@ class VideoPlayer:
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
-        self.gaze_df.sort_values(by='time', inplace=True)
-
-        for _, row in self.gaze_df.iterrows():
+        for gaze_idx in range(max(len(df) for df in self.gaze_dfs)):
             frame = self.image.copy()
-            pixel_coords = self._extract_pixel_coordinates(row['pixel'])
 
-            if pixel_coords:
-                x, y = pixel_coords
-                cv2.circle(frame, (x, y), 5, (0, 0, 255), -1)
-
+            self._overlay_gaze_on_image(frame, gaze_idx)
             out.write(frame)
 
         out.release()
@@ -376,22 +336,32 @@ class VideoPlayer:
         out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
         while True:
-            ret, video_frame = capture.read()
+            ret, frame = capture.read()
             if not ret:
                 break  # Stop playback if no more frames are available
 
             current_frame = int(capture.get(cv2.CAP_PROP_POS_FRAMES))
-            gaze_data = self.gaze_df[self.gaze_df['frame_idx'] == current_frame]
-
-            if not gaze_data.empty:
-                pixel_coords = self._extract_pixel_coordinates(gaze_data.iloc[0]['pixel'])
-
-                if pixel_coords:
-                    x, y = pixel_coords
-                    cv2.circle(video_frame, (x, y), 5, (0, 0, 255), -1)
-
-            out.write(video_frame)
+            self._overlay_gaze_on_video(frame, current_frame)
+            out.write(frame)
 
         capture.release()
         out.release()
         print(f"Video-based replay exported as MP4: {output_path}")
+
+    def _overlay_gaze_on_image(self, frame, gaze_idx):
+        for i, df in enumerate(self.gaze_dfs):
+            if gaze_idx >= len(df):
+                continue
+
+            row = df.iloc[gaze_idx]
+            pixel_coords = self._extract_pixel_coordinates(row['pixel'])
+            if pixel_coords:
+                cv2.circle(frame, pixel_coords, 5, self.colors[i % len(self.colors)], -1)
+
+    def _overlay_gaze_on_video(self, frame, current_frame):
+        for i, df in enumerate(self.gaze_dfs):
+            gaze_data = df[df['frame_idx'] == current_frame]
+            if not gaze_data.empty:
+                pixel_coords = self._extract_pixel_coordinates(gaze_data.iloc[0]['pixel'])
+                if pixel_coords:
+                    cv2.circle(frame, pixel_coords, 5, self.colors[i % len(self.colors)], -1)
