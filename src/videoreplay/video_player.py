@@ -171,9 +171,10 @@ class VideoPlayer:
             print('ERROR: Failed to load image stimulus.')
             return
 
-        for frame in self._overlay_gaze_on_image(fps=30 * speed):
+        speed_adjusted_fps = 30 * speed
+        for frame in self._overlay_gaze_on_image(speed_adjusted_fps):
             cv2.imshow('Eye-Tracking Replay', frame)
-            if cv2.waitKey(int(1000 / (30 * speed))) & 0xFF == ord('q'):
+            if cv2.waitKey(int(1000 / speed_adjusted_fps)) & 0xFF == ord('q'):
                 break
 
         cv2.destroyAllWindows()
@@ -183,6 +184,7 @@ class VideoPlayer:
         capture = cv2.VideoCapture(self.stimulus_path)
 
         frame_idx = 0
+        speed_adjusted_fps = 30 * speed
         while True:
             capture.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
             ret, frame = capture.read()
@@ -193,7 +195,7 @@ class VideoPlayer:
             self._overlay_gaze_on_video(frame, current_frame)
 
             cv2.imshow('Eye-Tracking Replay', frame)
-            if cv2.waitKey(int(1000 / (speed * 30))) & 0xFF == ord('q'):
+            if cv2.waitKey(int(1000 / speed_adjusted_fps)) & 0xFF == ord('q'):
                 break
 
             frame_idx += 1  # Move to next frame
@@ -289,23 +291,25 @@ class VideoPlayer:
         capture.release()
         cv2.destroyAllWindows()
 
-    def export_replay(self, filename: str, fps: int = 30):
+    def export_replay(self, filename: str, speed: float = 1.0):
         """Export the gaze replay as an MP4 video.
 
         Parameters
         ----------
         filename : str
             Name of the output file without extension. '.mp4' will be added automatically.
-        fps : int, optional
-            Frames per second for the exported video. Default is 30.
+        speed : float, optional
+            Playback speed multiplier. Default is 1.0.
+            Use values < 1.0 to slow down or > 1.0 to speed up playback.
         """
         output_path = f"{filename}.mp4"
+        speed_adjusted_fps = 30 * speed
         if self.is_image:
-            self._export_replay_image_stimulus(output_path, fps)
+            self._export_replay_image_stimulus(output_path, speed_adjusted_fps)
         else:
-            self._export_replay_video_stimulus(output_path, fps)
+            self._export_replay_video_stimulus(output_path, speed_adjusted_fps)
 
-    def _export_replay_image_stimulus(self, output_path: str, fps: int):
+    def _export_replay_image_stimulus(self, output_path: str, fps: float):
         """Handle exporting gaze replay for an image stimulus as an MP4 video."""
         print('Exporting gaze replay for an image stimulus...')
 
@@ -319,14 +323,14 @@ class VideoPlayer:
         out.release()
         print(f"Image-based replay exported as MP4: {output_path}")
 
-    def _export_replay_video_stimulus(self, output_path: str, fps: int):
+    def _export_replay_video_stimulus(self, output_path: str, fps: float):
         """Handle exporting gaze replay for a video stimulus as an MP4 video."""
         print('Exporting gaze replay for a video stimulus...')
 
         capture = cv2.VideoCapture(self.stimulus_path)
         width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # MP4 codec
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
         while True:
