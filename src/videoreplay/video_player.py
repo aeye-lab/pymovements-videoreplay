@@ -31,7 +31,15 @@ class VideoPlayer:
         stimulus_name = os.path.basename(stimulus_path)
         stimulus_name = os.path.splitext(stimulus_name)[0]  # Remove the extension
         self.is_image = self._is_image()
-        self.colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (0, 255, 255), (255, 0, 255)]
+
+        self.overlay_colors = [
+            (255, 0, 0),      # Blue
+            (0, 255, 255),    # Yellow
+            (128, 0, 128),    # Purple
+            (0, 165, 255),    # Orange
+            (255, 255, 0),    # Cyan
+        ]  # Color are in BGR format and not RGB
+
         self.gaze_dfs: list[tuple[str, pd.DataFrame]] = []
 
         column_mapping = {
@@ -262,7 +270,7 @@ class VideoPlayer:
                 idx = min(idx + 1, len(fixations) - 1)
                 continue
 
-            cv2.circle(frame, pixel_coords, 5, self.colors[0], -1)
+            cv2.circle(frame, pixel_coords, 5, self.overlay_colors[0], -1)
             cv2.imshow('Fixation Navigation', frame)
             key = cv2.waitKey(10)
 
@@ -300,7 +308,7 @@ class VideoPlayer:
                 idx += 1
                 continue
 
-            cv2.circle(frame, pixel_coords, 5, self.colors[0], -1)
+            cv2.circle(frame, pixel_coords, 5, self.overlay_colors[0], -1)
             cv2.imshow('Fixation Navigation', frame)
             key = cv2.waitKey(0)  # Wait for key press
 
@@ -397,7 +405,7 @@ class VideoPlayer:
 
                 pixel_coords = self._extract_pixel_coordinates(fixation['pixel'])
                 if pixel_coords:
-                    color = self.colors[i % len(self.colors)]
+                    color = self.overlay_colors[i % len(self.overlay_colors)]
                     cv2.circle(frame, pixel_coords, 5, color, -1)
 
             num_frames = int((delta_ms / 1000.0) * fps)
@@ -409,5 +417,5 @@ class VideoPlayer:
             if not gaze_data.empty:
                 pixel_coords = self._extract_pixel_coordinates(gaze_data.iloc[0]['pixel'])
                 if pixel_coords:
-                    color = self.colors[i % len(self.colors)]
+                    color = self.overlay_colors[i % len(self.overlay_colors)]
                     cv2.circle(frame, pixel_coords, 5, color, -1)
