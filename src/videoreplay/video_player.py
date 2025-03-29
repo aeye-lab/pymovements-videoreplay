@@ -32,7 +32,7 @@ class VideoPlayer:
         stimulus_name = os.path.splitext(stimulus_name)[0]  # Remove the extension
         self.is_image = self._is_image()
         self.colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (0, 255, 255), (255, 0, 255)]
-        self.gaze_dfs: list[pd.DataFrame] = []
+        self.gaze_dfs: list[tuple[str, pd.DataFrame]] = []
 
         column_mapping = {
             'CURRENT_FIX_X': 'pixel_x',  # Rename X-coordinate
@@ -73,7 +73,7 @@ class VideoPlayer:
                 session_df['pixel'] = list(zip(session_df['pixel_x'], session_df['pixel_y']))
 
                 self._normalize_timestamps(session_df)
-                self.gaze_dfs.append(session_df)
+                self.gaze_dfs.append((session, session_df))
 
         except (pd.errors.ParserError, FileNotFoundError) as e:
             print(f"ERROR: Failed to load gaze data - {e}")
@@ -198,7 +198,7 @@ class VideoPlayer:
             if cv2.waitKey(int(1000 / speed_adjusted_fps)) & 0xFF == ord('q'):
                 break
 
-            frame_idx += 1  # Move to next frame
+            frame_idx += 1
 
         capture.release()
         cv2.destroyAllWindows()
@@ -211,18 +211,44 @@ class VideoPlayer:
         - `p` for previous fixation
         - `q` to quit navigation
         """
-        if self.is_image:
-            self._navigate_fixations_on_image()
-        else:
-            self._navigate_fixations_on_video()
+        df = self._select_recording_session()
+        if df is None:
+            return
 
-    def _navigate_fixations_on_image(self):
+        if self.is_image:
+            self._navigate_fixations_on_image(df)
+        else:
+            self._navigate_fixations_on_video(df)
+
+    def _select_recording_session(self) -> pd.DataFrame | None:
+        """Prompt user to select a recording session from available ones."""
+        if not self.gaze_dfs:
+            print("No recording sessions loaded.")
+            return None
+
+        session_prompt = "Select a session by number:\n\n"
+        for i, (session_name, _) in enumerate(self.gaze_dfs):
+            session_prompt += f"  {i + 1}: {session_name}\n"
+        session_prompt += "\nYour choice: "
+
+        try:
+            choice = int(input(session_prompt)) - 1
+            if 0 <= choice < len(self.gaze_dfs):
+                return self.gaze_dfs[choice][1]
+            else:
+                print("Invalid selection.")
+        except ValueError:
+            print("Invalid input. Please enter a number.")
+
+        return None
+
+    def _navigate_fixations_on_image(self, df: pd.DataFrame):
         """Handle fixation navigation for an image stimulus."""
         if self.image is None:
             print('ERROR: Failed to load image stimulus.')
             return
 
-        fixations = self.gaze_df[self.gaze_df['pixel'].notna()]
+        fixations = df[df['pixel'].notna()]
         if fixations.empty:
             print('ERROR: No valid fixations found!')
             return
@@ -236,8 +262,7 @@ class VideoPlayer:
                 idx = min(idx + 1, len(fixations) - 1)
                 continue
 
-            x, y = pixel_coords
-            cv2.circle(frame, (x, y), 8, (0, 255, 0), -1)
+            cv2.circle(frame, pixel_coords, 5, self.colors[0], -1)
             cv2.imshow('Fixation Navigation', frame)
             key = cv2.waitKey(10)
 
@@ -250,11 +275,11 @@ class VideoPlayer:
 
         cv2.destroyAllWindows()
 
-    def _navigate_fixations_on_video(self):
+    def _navigate_fixations_on_video(self, df: pd.DataFrame):
         """Handle fixation navigation for a video stimulus."""
         capture = cv2.VideoCapture(self.stimulus_path)
 
-        fixations = self.gaze_df[self.gaze_df['pixel'].notna()]
+        fixations = df[df['pixel'].notna()]
         if fixations.empty:
             print('ERROR: No valid fixations found!')
             return
@@ -266,19 +291,17 @@ class VideoPlayer:
                 break
 
             capture.set(cv2.CAP_PROP_POS_FRAMES, fixations.iloc[idx]['frame_idx'])
-            frame_read_successful, video_frame = capture.read()
-            if not frame_read_successful:
+            ret, frame = capture.read()
+            if not ret:
                 break
 
             pixel_coords = self._extract_pixel_coordinates(fixations.iloc[idx]['pixel'])
             if pixel_coords is None:
-                idx += 1  # Skip invalid fixation
+                idx += 1
                 continue
 
-            x, y = pixel_coords
-            cv2.circle(video_frame, (x, y), 8, (0, 255, 0), -1)
-
-            cv2.imshow('Fixation Navigation', video_frame)
+            cv2.circle(frame, pixel_coords, 5, self.colors[0], -1)
+            cv2.imshow('Fixation Navigation', frame)
             key = cv2.waitKey(0)  # Wait for key press
 
             if key == ord('n') and idx < len(fixations) - 1:
@@ -348,7 +371,10 @@ class VideoPlayer:
 
     def _overlay_gaze_on_image(self, fps: float):
         # Tag each fixation with its session
-        all_fixations = pd.concat(self.gaze_dfs, keys=range(len(self.gaze_dfs)))
+        all_fixations = pd.concat(
+            [df for _, df in self.gaze_dfs],
+            keys=range(len(self.gaze_dfs))
+        )
         all_fixations.reset_index(inplace=True)
         all_fixations.sort_values(by='time', inplace=True)
 
@@ -378,9 +404,10 @@ class VideoPlayer:
             yield from [frame] * max(1, num_frames)
 
     def _overlay_gaze_on_video(self, frame, current_frame):
-        for i, df in enumerate(self.gaze_dfs):
+        for i, (_, df) in enumerate(self.gaze_dfs):
             gaze_data = df[df['frame_idx'] == current_frame]
             if not gaze_data.empty:
                 pixel_coords = self._extract_pixel_coordinates(gaze_data.iloc[0]['pixel'])
                 if pixel_coords:
-                    cv2.circle(frame, pixel_coords, 5, self.colors[i % len(self.colors)], -1)
+                    color = self.colors[i % len(self.colors)]
+                    cv2.circle(frame, pixel_coords, 5, color, -1)
