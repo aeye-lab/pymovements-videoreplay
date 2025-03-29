@@ -171,12 +171,9 @@ class VideoPlayer:
             print('ERROR: Failed to load image stimulus.')
             return
 
-        for gaze_idx in range(max(len(df) for df in self.gaze_dfs)):
-            frame = self.image.copy()
-            self._overlay_gaze_on_image(frame, gaze_idx)
-
+        for frame in self._overlay_gaze_on_image(fps=30 * speed):
             cv2.imshow('Eye-Tracking Replay', frame)
-            if cv2.waitKey(int(1000 / speed)) & 0xFF == ord('q'):
+            if cv2.waitKey(int(1000 / (30 * speed))) & 0xFF == ord('q'):
                 break
 
         cv2.destroyAllWindows()
@@ -316,10 +313,7 @@ class VideoPlayer:
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
-        for gaze_idx in range(max(len(df) for df in self.gaze_dfs)):
-            frame = self.image.copy()
-
-            self._overlay_gaze_on_image(frame, gaze_idx)
+        for frame in self._overlay_gaze_on_image(fps):
             out.write(frame)
 
         out.release()
@@ -348,15 +342,36 @@ class VideoPlayer:
         out.release()
         print(f"Video-based replay exported as MP4: {output_path}")
 
-    def _overlay_gaze_on_image(self, frame, gaze_idx):
-        for i, df in enumerate(self.gaze_dfs):
-            if gaze_idx >= len(df):
-                continue
+    def _overlay_gaze_on_image(self, fps: float):
+        # Tag each fixation with its session
+        all_fixations = pd.concat(self.gaze_dfs, keys=range(len(self.gaze_dfs)))
+        all_fixations.reset_index(inplace=True)
+        all_fixations.sort_values(by='time', inplace=True)
 
-            row = df.iloc[gaze_idx]
-            pixel_coords = self._extract_pixel_coordinates(row['pixel'])
-            if pixel_coords:
-                cv2.circle(frame, pixel_coords, 5, self.colors[i % len(self.colors)], -1)
+        session_count = len(self.gaze_dfs)
+        last_seen_fixation = [None] * session_count
+
+        prev_time = 0.0
+        for _, row in all_fixations.iterrows():
+            session_index = row['level_0']
+            current_time = row['time']
+            delta_ms = max(current_time - prev_time, 1)
+            prev_time = current_time
+
+            last_seen_fixation[session_index] = row
+
+            frame = self.image.copy()
+            for i, fixation in enumerate(last_seen_fixation):
+                if fixation is None:
+                    continue
+
+                pixel_coords = self._extract_pixel_coordinates(fixation['pixel'])
+                if pixel_coords:
+                    color = self.colors[i % len(self.colors)]
+                    cv2.circle(frame, pixel_coords, 5, color, -1)
+
+            num_frames = int((delta_ms / 1000.0) * fps)
+            yield from [frame] * max(1, num_frames)
 
     def _overlay_gaze_on_video(self, frame, current_frame):
         for i, df in enumerate(self.gaze_dfs):
