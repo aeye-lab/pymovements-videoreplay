@@ -39,6 +39,7 @@ class VideoPlayer:
             (0, 165, 255),    # Orange
             (255, 255, 0),    # Cyan
         ]  # Color are in BGR format and not RGB
+        self.dot_radius = 5
 
         self.gaze_dfs: list[tuple[str, pd.DataFrame]] = []
 
@@ -270,7 +271,7 @@ class VideoPlayer:
                 idx = min(idx + 1, len(fixations) - 1)
                 continue
 
-            cv2.circle(frame, pixel_coords, 5, self.overlay_colors[0], -1)
+            cv2.circle(frame, pixel_coords, self.dot_radius, self.overlay_colors[0], -1)
             cv2.imshow('Fixation Navigation', frame)
             key = cv2.waitKey(10)
 
@@ -308,7 +309,7 @@ class VideoPlayer:
                 idx += 1
                 continue
 
-            cv2.circle(frame, pixel_coords, 5, self.overlay_colors[0], -1)
+            cv2.circle(frame, pixel_coords, self.dot_radius, self.overlay_colors[0], -1)
             cv2.imshow('Fixation Navigation', frame)
             key = cv2.waitKey(0)  # Wait for key press
 
@@ -406,7 +407,7 @@ class VideoPlayer:
                 pixel_coords = self._extract_pixel_coordinates(fixation['pixel'])
                 if pixel_coords:
                     color = self.overlay_colors[i % len(self.overlay_colors)]
-                    cv2.circle(frame, pixel_coords, 5, color, -1)
+                    cv2.circle(frame, pixel_coords, self.dot_radius, color, -1)
 
             num_frames = int((delta_ms / 1000.0) * fps)
             yield from [frame] * max(1, num_frames)
@@ -418,4 +419,4 @@ class VideoPlayer:
                 pixel_coords = self._extract_pixel_coordinates(gaze_data.iloc[0]['pixel'])
                 if pixel_coords:
                     color = self.overlay_colors[i % len(self.overlay_colors)]
-                    cv2.circle(frame, pixel_coords, 5, color, -1)
+                    cv2.circle(frame, pixel_coords, self.dot_radius, color, -1)
