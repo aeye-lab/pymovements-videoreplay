@@ -409,10 +409,12 @@ class VideoPlayer:
                     color = self.overlay_colors[i % len(self.overlay_colors)]
                     cv2.circle(frame, pixel_coords, self.dot_radius, color, -1)
 
+            self._draw_legend(frame)
             num_frames = int((delta_ms / 1000.0) * fps)
             yield from [frame] * max(1, num_frames)
 
     def _overlay_gaze_on_video(self, frame, current_frame):
+        i: int
         for i, (_, df) in enumerate(self.gaze_dfs):
             gaze_data = df[df['frame_idx'] == current_frame]
             if not gaze_data.empty:
@@ -420,3 +422,29 @@ class VideoPlayer:
                 if pixel_coords:
                     color = self.overlay_colors[i % len(self.overlay_colors)]
                     cv2.circle(frame, pixel_coords, self.dot_radius, color, -1)
+
+            self._draw_legend(frame)
+
+    def _draw_legend(self, frame):
+        legend_height = 20 * len(self.gaze_dfs) + 10
+        legend_width = 250
+        legend = np.ones((legend_height, legend_width, 3), dtype=np.uint8) * 255
+
+        i: int
+        for i, (session_name, _) in enumerate(self.gaze_dfs):
+            color = self.overlay_colors[i % len(self.overlay_colors)]
+            y = 10 + i * 20
+            cv2.circle(legend, (10, y + 5), self.dot_radius, color, -1)
+            cv2.putText(
+                legend,
+                session_name,
+                (25, y + 10),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (0, 0, 0),
+                1,
+                cv2.LINE_AA,
+            )
+
+        frame[10: 10 + legend.shape[0], 10: 10 + legend.shape[1]] = legend
+
