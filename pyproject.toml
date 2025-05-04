@@ -15,8 +15,6 @@ authors = [
     { name = "Kirthan Gengatharan", email = "kirthan.gengatharan@uzh.ch" },
     { name = "Norina Braun", email = "norina.braun@uzh.ch" }
 ]
-homepage = "https://github.com/aeye-lab/pymovements-videoreplay"
-repository = "https://github.com/aeye-lab/pymovements-videoreplay"
 keywords = ["eye-tracking", "gaze-overlay", "video-replay", "pymovements"]
 classifiers = [
     "Intended Audience :: Science/Research",
@@ -40,6 +38,10 @@ dependencies = [
     "numpy>=1.22.4,<3",
     "opencv-python>=4.10.0.84"
 ]
+
+[project.urls]
+homepage = "https://github.com/aeye-lab/pymovements-videoreplay"
+repository = "https://github.com/aeye-lab/pymovements-videoreplay"
 
 [tool.setuptools.packages.find]
 where = ["src"]
