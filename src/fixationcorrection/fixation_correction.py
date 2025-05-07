@@ -2,6 +2,8 @@ import cv2
 import pandas as pd
 import os
 
+
+
 class FixationCorrection:
     def __init__(self, image_path, pandas_dataframe, title=None):
         self.image_path = image_path
@@ -10,8 +12,12 @@ class FixationCorrection:
         self.current_fixation_index = 0  # Index of the current active circle
         self.fixation_coordinates = None  # Fixations for the current image
         self.title = title
-
+        self.last_deleted_fixation = None
+        self.row_to_be_deleted = None
         self.get_xy_coordinates()
+        self.point_movement_mode = 1
+
+
 
     def get_xy_coordinates(self):
         xy_coordinates = list(zip(self.pandas_dataframe['CURRENT_FIX_X'], self.pandas_dataframe['CURRENT_FIX_Y']))
@@ -23,7 +29,7 @@ class FixationCorrection:
         self.image = cv2.imread(self.image_path)
 
         for i, (x, y) in enumerate(self.fixation_coordinates):
-            color = (255, 255, 0) if i == self.current_fixation_index else (0, 0, 255)
+            color = (0, 165, 255) if i == self.current_fixation_index else ((128, 0, 128))
             cv2.circle(self.image, (x, y), radius=10, color=color, thickness=1)# Circle for points
             if i < len(self.fixation_coordinates) - 1:
                 next_x, next_y = self.fixation_coordinates[i + 1]
@@ -42,6 +48,22 @@ class FixationCorrection:
         elif direction == 'right':
             self.fixation_coordinates[self.current_fixation_index] = (x + 10, y)  # Move right (increase x)
 
+    def delete_fixation(self):
+        self.last_deleted_fixation = self.fixation_coordinates[self.current_fixation_index]
+        self.fixation_coordinates.pop(self.current_fixation_index)
+        if self.row_to_be_deleted is not None:
+            self.pandas_dataframe = self.pandas_dataframe.drop(self.pandas_dataframe.index[self.row_to_be_deleted])
+        self.row_to_be_deleted = self.current_fixation_index
+        print(len(self.pandas_dataframe))
+
+
+    def undo_last_fixation(self):
+        if self.last_deleted_fixation is not None:
+            self.fixation_coordinates.insert(self.current_fixation_index, self.last_deleted_fixation)
+            self.last_deleted_fixation = None
+            self.row_to_be_deleted = None
+            print(len(self.pandas_dataframe))
+
 
     def handle_key(self, key):
         if key == ord('w'):  # Move up
@@ -58,8 +80,15 @@ class FixationCorrection:
                 self.current_fixation_index = 0  # Loop back to the first point
         elif key == ord('p'): #Go to previous point
             self.current_fixation_index -= 1
-        elif key == ord('q'):  # Exit editing (optional)
+        elif key == ord('q'):  # Exit editing
+            if self.row_to_be_deleted is not None:
+                self.pandas_dataframe = self.pandas_dataframe.drop(self.pandas_dataframe.index[self.row_to_be_deleted])
             return False
+        elif key == (ord('l')):
+            self.delete_fixation()
+        elif key == ord('u'):
+            self.undo_last_fixation()
+
         return True
 
     def edit_points(self):
@@ -81,35 +110,66 @@ class FixationCorrection:
 
         cv2.destroyAllWindows()
 
+    def export_correct_fixation(self):
+        #self.pandas_dataframe.to_csv(self.data_path, index=False)
+        print(self.pandas_dataframe.shape)
+        return self.pandas_dataframe
 
 
 
-class DataPreparation:
-    def __init__(self, csv_file, image_row_name, session_row_name, image_folder):
+class DataProcessing:
+    def __init__(self, csv_file, x_column, y_column, image_column, session_column, image_folder):
         self.csv_file = csv_file
         self.dataframes = {}
-        self.image_row_name = image_row_name
-        self.session_row_name = session_row_name
+        self.x_column = x_column
+        self.y_column = y_column
+        self.image_column = image_column
+        self.session_column = session_column
         self.image_folder = image_folder
         self.image_list = os.listdir(self.image_folder)
 
-    def prepareData(self):
+
+    def prepare_data(self):
             raw_data = pd.read_csv(self.csv_file)
             # Drop the entries where there is no corresponding image
-            dropped = raw_data[(raw_data['page_name'] + '.png').isin(self.image_list)]
-            grouped_data = dropped.groupby([self.image_row_name, self.session_row_name])
+            dropped = raw_data[(raw_data[self.image_column] + '.png').isin(self.image_list)]
+            grouped_data = dropped.groupby([self.image_column, self.session_column])
             for (image, session), group in grouped_data:
                 self.dataframes[(image, session)] = group
             return self.dataframes
 
+    def save_data(self, dataframe):
+        dataframe.to_csv(self.csv_file, index=False)
 
 
 
-prepared = DataPreparation('18sat_fixfinal.csv', 'page_name', 'RECORDING_SESSION_LABEL', 'reading screenshot')
-prep = prepared.prepareData()
+def run_fixation_correction(csv_file, x_column, y_column, image_column, session_column, image_folder):
+    prepared = DataProcessing(csv_file,x_column, y_column,image_column, session_column, image_folder)
+    dataframes = prepared.prepare_data()
 
-for entry in prep:
-    df = prep[entry]
-    image_name = prep[entry]['page_name'].iloc[0]
-    fix = FixationCorrection(image_name + '.png', df, df['RECORDING_SESSION_LABEL'].iloc[0])
-    fix.edit_points()
+    corrected_dataframes = []
+
+    for entry in dataframes:
+        df = dataframes[entry]
+        image_name = dataframes[entry][image_column].iloc[0]
+        for image in os.listdir(image_folder):
+            if image_name in image:
+                image_path = os.path.join(image_folder, image)
+                fix = FixationCorrection(image_path,df,df[session_column].iloc[0])
+                fix.edit_points()
+                corrected_dataframes.append(fix.pandas_dataframe)
+
+    #save the corrected data in a new file
+    if corrected_dataframes:
+        combined_dataframe = pd.concat(corrected_dataframes)
+        directory = os.path.dirname(csv_file)
+        filename = os.path.basename(csv_file)
+        name, ext = os.path.splitext(filename)
+        new_filename = f"{name}_fixation_corrected{ext}"
+        new_path = os.path.join(directory, new_filename)
+        combined_dataframe.to_csv(new_path, index=False)
+
+
+
+run_fixation_correction('18sat_fixfinal.csv','CURRENT_FIX_X', 'CURRENT_FIX_Y','page_name', 'RECORDING_SESSION_LABEL', 'reading screenshot')
+
