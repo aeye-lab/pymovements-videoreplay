@@ -3,6 +3,7 @@ import os
 import cv2
 import ocr_reader
 import pandas as pd
+from pynput import keyboard
 
 
 class FixationCorrection:
@@ -18,8 +19,11 @@ class FixationCorrection:
         self.get_xy_coordinates()
         self.point_movement_mode = 1
         self.ocr_centers = None
+        self.correction = True
 
         self.get_ocr_centers()
+        listener = keyboard.Listener(on_press=self.on_press)
+        listener.start()
 
     def get_xy_coordinates(self):
         xy_coordinates = list(zip(
@@ -87,34 +91,37 @@ class FixationCorrection:
             self.last_deleted_fixation = None
             self.row_to_be_deleted = None
 
-    def handle_key(self, key):
-        if key == ord('w'):  # Move up
-            self.move_point('up')
-        elif key == ord('s'):  # Move down
-            self.move_point('down')
-        elif key == ord('a'):  # Move left
-            self.move_point('left')
-        elif key == ord('d'):  # Move right
-            self.move_point('right')
-        elif key == ord('n'):  # Go to the next point
-            self.current_fixation_index += 1
-            if self.current_fixation_index >= len(self.fixation_coordinates):
-                self.current_fixation_index = 0  # Loop back to the first point
-        elif key == ord('p'):  # Go to previous point
-            self.current_fixation_index -= 1
-        elif key == ord('q'):  # Exit editing
-            if self.row_to_be_deleted is not None:
-                self.pandas_dataframe = self.pandas_dataframe.drop(
-                    self.pandas_dataframe.index[self.row_to_be_deleted])
-            return False
-        elif key == (ord('l')):
-            self.delete_fixation()
-        elif key == ord('u'):
-            self.undo_last_fixation()
-        elif key == ord('m'):
-            self.switch_point_movement_mode()
+    def on_press(self, key):
+        try:
+            if key == keyboard.Key.up:
+                self.move_point('up')
+            elif key == keyboard.Key.down:
+                self.move_point('down')
+            elif key == keyboard.Key.left:
+                self.current_fixation_index -= 1
+            elif key == keyboard.Key.right:
+                self.current_fixation_index += 1
+                if self.current_fixation_index >= len(self.fixation_coordinates):
+                    self.current_fixation_index = 0  # Loop back to the first point
+            elif key.char == 'a':
+                self.move_point('left')
+            elif key.char == 'd':
+                self.move_point('right')
+            elif key.char == 'l':
+                self.delete_fixation()
+            elif key.char == 'u':
+                self.undo_last_fixation()
+            elif key.char == 'm':
+                print('m')
+                self.switch_point_movement_mode()
+            elif key.char == 'q':  # Exit editing
+                if self.row_to_be_deleted is not None:
+                    self.pandas_dataframe = self.pandas_dataframe.drop(
+                        self.pandas_dataframe.index[self.row_to_be_deleted])
+                self.correction = False
 
-        return True
+        except AttributeError:
+            pass
 
     def edit_points(self):
         while self.current_fixation_index < len(self.fixation_coordinates):
@@ -127,9 +134,9 @@ class FixationCorrection:
                 f'Page {self.image_path}', self.image_path[:-4] + ' ' + self.title)
 
             # Wait for a key press to move or select next point
-            key = cv2.waitKey(0) & 0xFF  # Get key press
+            cv2.waitKey(0) & 0xFF  # Get key press
 
-            if not self.handle_key(key):  # Handle the key press
+            if not self.correction:
                 cv2.destroyAllWindows()
                 return
 
@@ -146,6 +153,7 @@ class FixationCorrection:
         self.ocr_centers = reader.list_of_centers
 
     def switch_point_movement_mode(self):
+        print('switch point movement mode')
         if self.point_movement_mode == 1:
             self.point_movement_mode = 0
         else:
