@@ -29,7 +29,8 @@ class VideoPlayer:
     def __init__(self, stimulus_path: str, dataset_path: str, recording_sessions: list[str]):
         self.stimulus_path = stimulus_path
         stimulus_name = os.path.basename(stimulus_path)
-        stimulus_name = os.path.splitext(stimulus_name)[0]  # Remove the extension
+        stimulus_name = os.path.splitext(stimulus_name)[
+            0]  # Remove the extension
         self.is_image = self._is_image()
 
         self.overlay_colors = [
@@ -52,7 +53,8 @@ class VideoPlayer:
         }
 
         try:
-            csv_files = [f for f in Path(dataset_path).glob('*.csv') if 'fixfinal' in f.name]
+            csv_files = [f for f in Path(dataset_path).glob(
+                '*.csv') if 'fixfinal' in f.name]
 
             if not csv_files:
                 print(f"ERROR: No valid CSV file found in {dataset_path}!")
@@ -61,7 +63,8 @@ class VideoPlayer:
             csv_file = csv_files[0]
             print(f"Loading gaze data from: {csv_file}")
 
-            base_df = pd.read_csv(csv_file, usecols=list(column_mapping.keys()))
+            base_df = pd.read_csv(
+                csv_file, usecols=list(column_mapping.keys()))
             base_df.rename(columns=column_mapping, inplace=True)
 
             for session in recording_sessions:
@@ -71,15 +74,18 @@ class VideoPlayer:
                 ].copy()
 
                 if session_df.empty:
-                    print(f"WARNING: No data for session '{session}' and stimulus '{stimulus_name}' found")
+                    print(
+                        f"WARNING: No data for session '{session}' and stimulus '{stimulus_name}' found")
                     continue
 
                 # Compute Cumulative Time (Start at 0)
-                session_df['time'] = session_df['duration'].cumsum().shift(fill_value=0)
+                session_df['time'] = session_df['duration'].cumsum().shift(
+                    fill_value=0)
                 session_df.sort_values(by='time', inplace=True)
 
                 # Combine pixel columns
-                session_df['pixel'] = list(zip(session_df['pixel_x'], session_df['pixel_y']))
+                session_df['pixel'] = list(
+                    zip(session_df['pixel_x'], session_df['pixel_y']))
 
                 self._normalize_timestamps(session_df)
                 self.gaze_dfs.append((session, session_df))
@@ -121,7 +127,8 @@ class VideoPlayer:
                 return x, y
 
             except (ValueError, TypeError) as e:
-                print(f"ERROR converting pixel data: {e}, Value: {pixel_value}")
+                print(
+                    f"ERROR converting pixel data: {e}, Value: {pixel_value}")
                 return None
 
         print(f"Invalid gaze data: {pixel_value} (Type: {type(pixel_value)})")
@@ -142,19 +149,23 @@ class VideoPlayer:
         frame_count = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
         capture.release()
 
-        print(f"Video loaded successfully! FPS: {fps}, Total Frames: {frame_count}")
+        print(
+            f"Video loaded successfully! FPS: {fps}, Total Frames: {frame_count}")
 
         required_columns = ['time']
         if not all(col in df.columns for col in required_columns):
-            print(f"ERROR: Required columns {required_columns} not found in gaze_df!")
+            print(
+                f"ERROR: Required columns {required_columns} not found in gaze_df!")
             return
 
         # Normalize timestamps: shift them to start from 0
         min_time = df['time'].min()  # Get the first timestamp
-        df['normalized_time'] = (df['time'] - min_time) / 1000.0  # Convert ms → s
+        df['normalized_time'] = (df['time'] - min_time) / \
+            1000.0  # Convert ms → s
 
         # Convert timestamps to frame indices using FPS
-        df['frame_idx'] = np.clip((df['normalized_time'] * fps).astype(int), 0, frame_count - 1)
+        df['frame_idx'] = np.clip(
+            (df['normalized_time'] * fps).astype(int), 0, frame_count - 1)
 
     def play(self, speed: float = 1.0) -> None:
         """Play the stimulus (video or image) with gaze overlay.
@@ -166,7 +177,7 @@ class VideoPlayer:
             Use values < 1.0 to slow down or > 1.0 to speed up playback.
         """
         if not self.gaze_dfs:
-            print("ERROR: No gaze data loaded!")
+            print('ERROR: No gaze data loaded!')
             return
 
         if self.is_image:
@@ -232,22 +243,22 @@ class VideoPlayer:
     def _select_recording_session(self) -> pd.DataFrame | None:
         """Prompt user to select a recording session from available ones."""
         if not self.gaze_dfs:
-            print("No recording sessions loaded.")
+            print('No recording sessions loaded.')
             return None
 
-        session_prompt = "Select a session by number:\n\n"
+        session_prompt = 'Select a session by number:\n\n'
         for i, (session_name, _) in enumerate(self.gaze_dfs):
             session_prompt += f"  {i + 1}: {session_name}\n"
-        session_prompt += "\nYour choice: "
+        session_prompt += '\nYour choice: '
 
         try:
             choice = int(input(session_prompt)) - 1
             if 0 <= choice < len(self.gaze_dfs):
                 return self.gaze_dfs[choice][1]
             else:
-                print("Invalid selection.")
+                print('Invalid selection.')
         except ValueError:
-            print("Invalid input. Please enter a number.")
+            print('Invalid input. Please enter a number.')
 
         return None
 
@@ -266,12 +277,14 @@ class VideoPlayer:
         while True:
             frame = self.image.copy()  # Keep original image untouched
 
-            pixel_coords = self._extract_pixel_coordinates(fixations.iloc[idx]['pixel'])
+            pixel_coords = self._extract_pixel_coordinates(
+                fixations.iloc[idx]['pixel'])
             if pixel_coords is None:
                 idx = min(idx + 1, len(fixations) - 1)
                 continue
 
-            cv2.circle(frame, pixel_coords, self.dot_radius, self.overlay_colors[0], -1)
+            cv2.circle(frame, pixel_coords, self.dot_radius,
+                       self.overlay_colors[0], -1)
             cv2.imshow('Fixation Navigation', frame)
             key = cv2.waitKey(10)
 
@@ -299,17 +312,20 @@ class VideoPlayer:
                 print('Warning: No more fixations available!')
                 break
 
-            capture.set(cv2.CAP_PROP_POS_FRAMES, fixations.iloc[idx]['frame_idx'])
+            capture.set(cv2.CAP_PROP_POS_FRAMES,
+                        fixations.iloc[idx]['frame_idx'])
             ret, frame = capture.read()
             if not ret:
                 break
 
-            pixel_coords = self._extract_pixel_coordinates(fixations.iloc[idx]['pixel'])
+            pixel_coords = self._extract_pixel_coordinates(
+                fixations.iloc[idx]['pixel'])
             if pixel_coords is None:
                 idx += 1
                 continue
 
-            cv2.circle(frame, pixel_coords, self.dot_radius, self.overlay_colors[0], -1)
+            cv2.circle(frame, pixel_coords, self.dot_radius,
+                       self.overlay_colors[0], -1)
             cv2.imshow('Fixation Navigation', frame)
             key = cv2.waitKey(0)  # Wait for key press
 
@@ -382,7 +398,7 @@ class VideoPlayer:
         # Tag each fixation with its session
         all_fixations = pd.concat(
             [df for _, df in self.gaze_dfs],
-            keys=range(len(self.gaze_dfs))
+            keys=range(len(self.gaze_dfs)),
         )
         all_fixations.reset_index(inplace=True)
         all_fixations.sort_values(by='time', inplace=True)
@@ -404,7 +420,8 @@ class VideoPlayer:
                 if fixation is None:
                     continue
 
-                pixel_coords = self._extract_pixel_coordinates(fixation['pixel'])
+                pixel_coords = self._extract_pixel_coordinates(
+                    fixation['pixel'])
                 if pixel_coords:
                     color = self.overlay_colors[i % len(self.overlay_colors)]
                     cv2.circle(frame, pixel_coords, self.dot_radius, color, -1)
@@ -418,7 +435,8 @@ class VideoPlayer:
         for i, (_, df) in enumerate(self.gaze_dfs):
             gaze_data = df[df['frame_idx'] == current_frame]
             if not gaze_data.empty:
-                pixel_coords = self._extract_pixel_coordinates(gaze_data.iloc[0]['pixel'])
+                pixel_coords = self._extract_pixel_coordinates(
+                    gaze_data.iloc[0]['pixel'])
                 if pixel_coords:
                     color = self.overlay_colors[i % len(self.overlay_colors)]
                     cv2.circle(frame, pixel_coords, self.dot_radius, color, -1)
@@ -428,7 +446,8 @@ class VideoPlayer:
     def _draw_legend(self, frame):
         legend_height = 20 * len(self.gaze_dfs) + 10
         legend_width = 250
-        legend = np.ones((legend_height, legend_width, 3), dtype=np.uint8) * 255
+        legend = np.ones((legend_height, legend_width, 3),
+                         dtype=np.uint8) * 255
 
         i: int
         for i, (session_name, _) in enumerate(self.gaze_dfs):
@@ -447,4 +466,3 @@ class VideoPlayer:
             )
 
         frame[10: 10 + legend.shape[0], 10: 10 + legend.shape[1]] = legend
-

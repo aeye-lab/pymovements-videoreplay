@@ -14,7 +14,6 @@ Example Usage:
                      dataset_path="data/ToyDataset",
                      dataset_name="ToyDataset")
 """
-
 from .video_player import VideoPlayer
 
-__all__ = ["VideoPlayer"]
+__all__ = ['VideoPlayer']
