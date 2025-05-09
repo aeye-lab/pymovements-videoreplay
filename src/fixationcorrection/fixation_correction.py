@@ -1,7 +1,5 @@
 from __future__ import annotations
-
 import os
-
 import cv2
 import ocr_reader
 import pandas as pd
@@ -122,7 +120,7 @@ class FixationCorrection:
         while self.current_fixation_index < len(self.fixation_coordinates):
             # Draw the points on the image
             image_with_points = self.draw_points_on_image()
-
+            self.display_point_movement_mode()
             # Display the image with the overlaid points
             cv2.imshow(f'Page {self.image_path}', image_with_points)
             cv2.setWindowTitle(
@@ -152,6 +150,25 @@ class FixationCorrection:
             self.point_movement_mode = 0
         else:
             self.point_movement_mode = 1
+
+    def display_point_movement_mode(self):
+        mode = ''
+        if self.point_movement_mode == 0:
+            mode = 'AOI'
+        elif self.point_movement_mode == 1:
+            mode = 'Pixel'
+
+        # Coordinates for box
+        box_top_left = (50, 10)
+        box_bottom_right = (360, 60)
+
+        # Draw the box
+        cv2.rectangle(self.image, box_top_left, box_bottom_right, (200, 200, 200), -1)  # Grey background
+        cv2.rectangle(self.image, box_top_left, box_bottom_right, (0, 0, 0), 1)  # Black border
+
+        # Add custom text
+        cv2.putText(self.image, "Fixation movement mode (m): "+ mode, (box_top_left[0] + 10, box_top_left[1] + 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
 
 
 class DataProcessing:
