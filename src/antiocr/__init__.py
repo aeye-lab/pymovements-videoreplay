@@ -13,7 +13,6 @@ Example Usage:
     generator = AntiOCR(frame_width=1920, frame_height=1080)
     generator.generate_from_csv("annotations.csv", output_path="stimulus.png")
 """
-
 from .anti_ocr import AntiOCR
 
-__all__ = ["AntiOCR"]
+__all__ = ['AntiOCR']
