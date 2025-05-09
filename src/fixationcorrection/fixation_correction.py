@@ -1,6 +1,7 @@
 import cv2
 import pandas as pd
 import os
+import ocr_reader
 
 
 
@@ -16,7 +17,9 @@ class FixationCorrection:
         self.row_to_be_deleted = None
         self.get_xy_coordinates()
         self.point_movement_mode = 1
+        self.ocr_centers = None
 
+        self.get_ocr_centers()
 
 
     def get_xy_coordinates(self):
@@ -39,14 +42,24 @@ class FixationCorrection:
     def move_point(self, direction):
         # Move the current active point in the specified direction
         x, y = self.fixation_coordinates[self.current_fixation_index]
-        if direction == 'up':
-            self.fixation_coordinates[self.current_fixation_index] = (x, y - 10)  # Move up (decrease y)
-        elif direction == 'down':
-            self.fixation_coordinates[self.current_fixation_index] = (x, y + 10)  # Move down (increase y)
-        elif direction == 'left':
-            self.fixation_coordinates[self.current_fixation_index] = (x - 10, y)  # Move left (decrease x)
-        elif direction == 'right':
-            self.fixation_coordinates[self.current_fixation_index] = (x + 10, y)  # Move right (increase x)
+        if self.point_movement_mode == 1:
+            if direction == 'up':
+                self.fixation_coordinates[self.current_fixation_index] = (x, y - 10)  # Move up (decrease y)
+            elif direction == 'down':
+                self.fixation_coordinates[self.current_fixation_index] = (x, y + 10)  # Move down (increase y)
+            elif direction == 'left':
+                self.fixation_coordinates[self.current_fixation_index] = (x - 10, y)  # Move left (decrease x)
+            elif direction == 'right':
+                self.fixation_coordinates[self.current_fixation_index] = (x + 10, y)  # Move right (increase x)
+        elif self.point_movement_mode == 0:
+            if direction == 'up':
+                self.fixation_coordinates[self.current_fixation_index] = ocr_reader.find_closest_top_box(x,y,self.ocr_centers)
+            elif direction == 'down':
+                self.fixation_coordinates[self.current_fixation_index] = ocr_reader.find_closest_bottom_box(x,y,self.ocr_centers)
+            elif direction == 'left':
+                self.fixation_coordinates[self.current_fixation_index] = ocr_reader.find_closest_left_box(x,y,self.ocr_centers)
+            elif direction == 'right':
+                self.fixation_coordinates[self.current_fixation_index] = ocr_reader.find_closest_right_box(x,y,self.ocr_centers)
 
     def delete_fixation(self):
         self.last_deleted_fixation = self.fixation_coordinates[self.current_fixation_index]
@@ -54,16 +67,12 @@ class FixationCorrection:
         if self.row_to_be_deleted is not None:
             self.pandas_dataframe = self.pandas_dataframe.drop(self.pandas_dataframe.index[self.row_to_be_deleted])
         self.row_to_be_deleted = self.current_fixation_index
-        print(len(self.pandas_dataframe))
-
 
     def undo_last_fixation(self):
         if self.last_deleted_fixation is not None:
             self.fixation_coordinates.insert(self.current_fixation_index, self.last_deleted_fixation)
             self.last_deleted_fixation = None
             self.row_to_be_deleted = None
-            print(len(self.pandas_dataframe))
-
 
     def handle_key(self, key):
         if key == ord('w'):  # Move up
@@ -88,6 +97,8 @@ class FixationCorrection:
             self.delete_fixation()
         elif key == ord('u'):
             self.undo_last_fixation()
+        elif key == ord('m'):
+            self.switch_point_movement_mode()
 
         return True
 
@@ -115,6 +126,16 @@ class FixationCorrection:
         print(self.pandas_dataframe.shape)
         return self.pandas_dataframe
 
+    def get_ocr_centers(self):
+        reader = ocr_reader.OCR_Reader(self.image_path)
+        reader.read_image()
+        self.ocr_centers =  reader.list_of_centers
+
+    def switch_point_movement_mode(self):
+        if self.point_movement_mode == 1:
+            self.point_movement_mode = 0
+        else:
+            self.point_movement_mode = 1
 
 
 class DataProcessing:
@@ -143,11 +164,13 @@ class DataProcessing:
 
 
 
+
 def run_fixation_correction(csv_file, x_column, y_column, image_column, session_column, image_folder):
     prepared = DataProcessing(csv_file,x_column, y_column,image_column, session_column, image_folder)
     dataframes = prepared.prepare_data()
 
     corrected_dataframes = []
+    key = cv2.waitKey(0) & 0xFF
 
     for entry in dataframes:
         df = dataframes[entry]
