@@ -162,7 +162,7 @@ class FixationCorrection:
 
     def get_ocr_centers(self):
         reader = ocr_reader.OCR_Reader(self.image_path)
-        reader.read_image()
+        reader.get_list_of_centers()
         self.ocr_centers = reader.list_of_centers
 
     def switch_point_movement_mode(self):

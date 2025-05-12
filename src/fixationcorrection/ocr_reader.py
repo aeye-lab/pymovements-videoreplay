@@ -61,7 +61,8 @@ class OCR_Reader:
         self.path_to_image = path_to_image
         self.list_of_centers = []
 
-    def read_image(self):
+    def get_list_of_centers(self):
+        # This is the method used by the fixation correction to find the center of the AOI
         img = cv2.imread(self.path_to_image)
         d = pytesseract.image_to_data(img, output_type=Output.DICT)
         n_boxes = len(d['text'])
@@ -73,18 +74,30 @@ class OCR_Reader:
                                 [i], d['width'][i], d['height'][i])
                 center = (int(x + w / 2), int(y + h / 2))
                 self.list_of_centers.append(center)
-
-                # Uncomment this to see the boxes around the words
-                # img = cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                # img = cv2.circle(img, center, 5, (0, 0, 255), -1)
-        # cv2.imshow('image', img)
-        # cv2.waitKey(0)
         return d
 
+    def read_image(self):
+        # Use this method, if you want to only use the ocr functionality
+        img = cv2.imread(self.path_to_image)
+        d = pytesseract.image_to_data(img, output_type=Output.DICT)
+        n_boxes = len(d['text'])
+        for i in range(n_boxes):
+            if int(d['conf'][i]) > 60 and d['width'][i] / d['height'][i] > 0.3 and d['height'][
+                i
+            ] > 2:  # make sure there are no weird long boxes that are not around words
+                (x, y, w, h) = (d['left'][i], d['top']
+                [i], d['width'][i], d['height'][i])
 
-# path = 'reading-dickens-1.png'
-# reader = OCR_Reader(path)
-# dic = reader.read_image()
+                img = cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
+        cv2.imshow('image', img)
+        cv2.waitKey(0)
+
+        return d
+
+#path = 'reading-dickens-1.png'
+#reader = OCR_Reader(path)
+#d = reader.read_image()
 
 # print(reader.list_of_centers)
 # left = reader.find_closest_left_box(300,300)
