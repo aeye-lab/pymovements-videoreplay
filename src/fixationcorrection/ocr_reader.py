@@ -70,8 +70,10 @@ class OCR_Reader:
             if int(d['conf'][i]) > 60 and d['width'][i] / d['height'][i] > 0.3 and d['height'][
                 i
             ] > 2:  # make sure there are no weird long boxes that are not around words
-                (x, y, w, h) = (d['left'][i], d['top']
-                                [i], d['width'][i], d['height'][i])
+                (x, y, w, h) = (
+                    d['left'][i], d['top']
+                    [i], d['width'][i], d['height'][i],
+                )
                 center = (int(x + w / 2), int(y + h / 2))
                 self.list_of_centers.append(center)
         return d
