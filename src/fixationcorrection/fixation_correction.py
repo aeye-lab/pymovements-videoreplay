@@ -20,6 +20,7 @@ class FixationCorrection:
         self.point_movement_mode = 1
         self.ocr_centers = None
         self.correction = True
+        self.original_fixation = None
 
         self.get_ocr_centers()
         listener = keyboard.Listener(on_press=self.on_press)
@@ -49,6 +50,11 @@ class FixationCorrection:
     def move_point(self, direction):
         # Move the current active point in the specified direction
         x, y = self.fixation_coordinates[self.current_fixation_index]
+        print(x,y)
+        if not self.original_fixation:
+            self.original_fixation = (x,y)
+        print(self.original_fixation)
+
         if self.point_movement_mode == 1:
             if direction == 'up':
                 self.fixation_coordinates[self.current_fixation_index] = (
@@ -84,12 +90,15 @@ class FixationCorrection:
                 self.pandas_dataframe.index[self.row_to_be_deleted])
         self.row_to_be_deleted = self.current_fixation_index
 
-    def undo_last_fixation(self):
+    def undo_last_deletion(self):
         if self.last_deleted_fixation is not None:
             self.fixation_coordinates.insert(
                 self.current_fixation_index, self.last_deleted_fixation)
             self.last_deleted_fixation = None
             self.row_to_be_deleted = None
+
+    def undo_last_correction(self):
+        self.fixation_coordinates[self.current_fixation_index] = self.original_fixation
 
     def on_press(self, key):
         try:
@@ -99,22 +108,26 @@ class FixationCorrection:
                 self.move_point('down')
             elif key == keyboard.Key.left:
                 self.current_fixation_index -= 1
+                self.original_fixation = None
             elif key == keyboard.Key.right:
                 self.current_fixation_index += 1
+                self.original_fixation = None
                 if self.current_fixation_index >= len(self.fixation_coordinates):
                     self.current_fixation_index = 0  # Loop back to the first point
-            elif key.char == 'a':
+            elif key.char == 'q':
                 self.move_point('left')
-            elif key.char == 'd':
+            elif key.char == 'r':
                 self.move_point('right')
             elif key.char == 'l':
                 self.delete_fixation()
             elif key.char == 'u':
-                self.undo_last_fixation()
+                self.undo_last_deletion()
+            elif key.char == 'z':
+                self.undo_last_correction()
             elif key.char == 'm':
                 print('m')
                 self.switch_point_movement_mode()
-            elif key.char == 'q':  # Exit editing
+            elif key.char == 'n':
                 if self.row_to_be_deleted is not None:
                     self.pandas_dataframe = self.pandas_dataframe.drop(
                         self.pandas_dataframe.index[self.row_to_be_deleted])
@@ -153,7 +166,6 @@ class FixationCorrection:
         self.ocr_centers = reader.list_of_centers
 
     def switch_point_movement_mode(self):
-        print('switch point movement mode')
         if self.point_movement_mode == 1:
             self.point_movement_mode = 0
         else:
