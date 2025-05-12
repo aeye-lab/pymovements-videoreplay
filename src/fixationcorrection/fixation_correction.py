@@ -60,9 +60,9 @@ class FixationCorrection:
     def move_point(self, direction):
         # Move the current active point in the specified direction
         x, y = self.fixation_coordinates[self.current_fixation_index]
-        print(x,y)
+        print(x, y)
         if not self.original_fixation:
-            self.original_fixation = (x,y)
+            self.original_fixation = (x, y)
         print(self.original_fixation)
 
         if self.point_movement_mode == 1:
@@ -165,8 +165,10 @@ class FixationCorrection:
             # Display the image with the overlaid points
             cv2.imshow(f'Page {self.image_path}', image_with_points)
             cv2.setWindowTitle(
-                f'Page {self.image_path}', self.image_path[:-
-                                                           4] + ' ' + self.title,
+                f'Page {self.image_path}', self.image_path[
+                    :-
+                    4
+                ] + ' ' + self.title,
             )
 
             # Wait for a key press to move or select next point
@@ -206,10 +208,14 @@ class FixationCorrection:
         box_bottom_right = (360, 60)
 
         # Draw the box
-        cv2.rectangle(self.image, box_top_left, box_bottom_right,
-                      (200, 200, 200), -1)  # Grey background
-        cv2.rectangle(self.image, box_top_left, box_bottom_right,
-                      (0, 0, 0), 1)  # Black border
+        cv2.rectangle(
+            self.image, box_top_left, box_bottom_right,
+            (200, 200, 200), -1,
+        )  # Grey background
+        cv2.rectangle(
+            self.image, box_top_left, box_bottom_right,
+            (0, 0, 0), 1,
+        )  # Black border
 
         # Add custom text
         cv2.putText(

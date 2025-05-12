@@ -87,19 +87,22 @@ class OCR_Reader:
             if int(d['conf'][i]) > 60 and d['width'][i] / d['height'][i] > 0.3 and d['height'][
                 i
             ] > 2:  # make sure there are no weird long boxes that are not around words
-                (x, y, w, h) = (d['left'][i], d['top']
-                [i], d['width'][i], d['height'][i])
+                (x, y, w, h) = (
+                    d['left'][i], d['top']
+                    [i], d['width'][i], d['height'][i],
+                )
 
-                img = cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                img = cv2.rectangle(
+                    img, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
         cv2.imshow('image', img)
         cv2.waitKey(0)
 
         return d
 
-#path = 'reading-dickens-1.png'
-#reader = OCR_Reader(path)
-#d = reader.read_image()
+# path = 'reading-dickens-1.png'
+# reader = OCR_Reader(path)
+# d = reader.read_image()
 
 # print(reader.list_of_centers)
 # left = reader.find_closest_left_box(300,300)
