@@ -1,7 +1,5 @@
 from __future__ import annotations
-
 import os
-
 import cv2
 import ocr_reader
 import pandas as pd
@@ -60,27 +58,26 @@ class FixationCorrection:
     def move_point(self, direction):
         # Move the current active point in the specified direction
         x, y = self.fixation_coordinates[self.current_fixation_index]
-        print(x,y)
+
         if not self.original_fixation:
             self.original_fixation = (x,y)
-        print(self.original_fixation)
 
         if self.point_movement_mode == 1:
             if direction == 'up':
                 self.fixation_coordinates[self.current_fixation_index] = (
-                    x, y - 10,
-                )  # Move up (decrease y)
+                    x, y - 1,
+                )
             elif direction == 'down':
                 self.fixation_coordinates[self.current_fixation_index] = (
-                    x, y + 10,
+                    x, y + 1,
                 )  # Move down (increase y)
             elif direction == 'left':
                 self.fixation_coordinates[self.current_fixation_index] = (
-                    x - 10, y,
+                    x - 1, y,
                 )  # Move left (decrease x)
             elif direction == 'right':
                 self.fixation_coordinates[self.current_fixation_index] = (
-                    x + 10, y,
+                    x + 1, y,
                 )  # Move right (increase x)
         elif self.point_movement_mode == 0:
             if direction == 'up':
@@ -145,13 +142,13 @@ class FixationCorrection:
             elif key.char == 'z':
                 self.undo_last_correction()
             elif key.char == 'm':
-                print('m')
                 self.switch_point_movement_mode()
             elif key.char == 'n':
                 if self.row_to_be_deleted is not None:
                     self.pandas_dataframe = self.pandas_dataframe.drop(
                         self.pandas_dataframe.index[self.row_to_be_deleted],
                     )
+                self.save_corrected_fixations()
                 self.correction = False
 
         except AttributeError:
@@ -173,15 +170,14 @@ class FixationCorrection:
             cv2.waitKey(0) & 0xFF  # Get key press
 
             if not self.correction:
+                #self.save_corrected_fixations()
                 cv2.destroyAllWindows()
                 return
 
         cv2.destroyAllWindows()
 
-    def export_correct_fixation(self):
-        # self.pandas_dataframe.to_csv(self.data_path, index=False)
-        print(self.pandas_dataframe.shape)
-        return self.pandas_dataframe
+    def save_corrected_fixations(self):
+        self.pandas_dataframe[['x_corrected', 'y_corrected']] = pd.DataFrame(self.fixation_coordinates)
 
     def get_ocr_centers(self):
         reader = ocr_reader.OCR_Reader(self.image_path)
@@ -190,7 +186,10 @@ class FixationCorrection:
 
     def switch_point_movement_mode(self):
         if self.point_movement_mode == 1:
-            self.point_movement_mode = 0
+            try:
+                self.point_movement_mode = 0
+            except ModuleNotFoundError:
+                print("Feature unavailable: 'pytesseract' is not installed.")
         else:
             self.point_movement_mode = 1
 
@@ -211,7 +210,7 @@ class FixationCorrection:
         cv2.rectangle(self.image, box_top_left, box_bottom_right,
                       (0, 0, 0), 1)  # Black border
 
-        # Add custom text
+        # Add text
         cv2.putText(
             self.image, 'Fixation movement mode (m): ' +
             mode, (box_top_left[0] + 10, box_top_left[1] + 30),
@@ -220,15 +219,19 @@ class FixationCorrection:
 
 
 class DataProcessing:
-    def __init__(self, csv_file, x_column, y_column, image_column, session_column, image_folder):
+    def __init__(self, csv_file, x_column, y_column, image_column, image_folder, groups=None, filters=None):
         self.csv_file = csv_file
         self.dataframes = {}
         self.x_column = x_column
         self.y_column = y_column
         self.image_column = image_column
-        self.session_column = session_column
         self.image_folder = image_folder
         self.image_list = os.listdir(self.image_folder)
+        self.groups = groups
+        self.filters = filters
+
+        self.groups.append(self.image_column)
+
 
     def prepare_data(self):
         raw_data = pd.read_csv(self.csv_file)
@@ -237,41 +240,54 @@ class DataProcessing:
             raw_data[self.image_column] +
             '.png'
         ).isin(self.image_list)]
-        grouped_data = dropped.groupby(
-            [self.image_column, self.session_column],
-        )
-        for (image, session), group in grouped_data:
-            self.dataframes[(image, session)] = group
+        self.dataframes = self.filter_and_group(dropped)
         return self.dataframes
 
     def save_data(self, dataframe):
         dataframe.to_csv(self.csv_file, index=False)
 
+    def filter_and_group(self, dataframe):
+        if self.filters:
+            for col, value in self.filters:
+                if isinstance(value, list):
+                    dataframe = dataframe[dataframe[col].isin(value)]
+                else:
+                    dataframe = dataframe[dataframe[col] == value]
 
-def run_fixation_correction(csv_file, x_column, y_column, image_column, session_column, image_folder):
+        if self.groups:
+            grouped = dataframe.groupby(self.groups)
+            return [group.copy() for _, group in grouped]
+        else:
+            return [dataframe.copy()]
+
+
+
+def run_fixation_correction(csv_file, x_column, y_column, image_column, image_folder, groups=None, filters=None):
     prepared = DataProcessing(
-        csv_file, x_column, y_column, image_column, session_column, image_folder,
+        csv_file, x_column, y_column, image_column, image_folder, groups, filters
     )
     dataframes = prepared.prepare_data()
 
     corrected_dataframes = []
     cv2.waitKey(0) & 0xFF
 
-    for entry in dataframes:
-        df = dataframes[entry]
-        image_name = dataframes[entry][image_column].iloc[0]
+    for frame in dataframes:
+        image_name = frame[image_column].iloc[0]
         for image in os.listdir(image_folder):
             if image_name in image:
                 image_path = os.path.join(image_folder, image)
                 fix = FixationCorrection(
-                    image_path, df, df[session_column].iloc[0],
+                    image_path, frame, frame[groups[0]].iloc[0],
                 )
                 fix.edit_points()
+                # fix.save_corrected_fixations()
                 corrected_dataframes.append(fix.pandas_dataframe)
+
+
 
     # save the corrected data in a new file
     if corrected_dataframes:
-        combined_dataframe = pd.concat(corrected_dataframes)
+        combined_dataframe = pd.concat(corrected_dataframes,ignore_index=True)
         directory = os.path.dirname(csv_file)
         filename = os.path.basename(csv_file)
         name, ext = os.path.splitext(filename)
@@ -282,5 +298,5 @@ def run_fixation_correction(csv_file, x_column, y_column, image_column, session_
 
 run_fixation_correction(
     '18sat_fixfinal.csv', 'CURRENT_FIX_X', 'CURRENT_FIX_Y',
-    'page_name', 'RECORDING_SESSION_LABEL', 'reading screenshot',
+    'page_name', 'reading screenshot',['RECORDING_SESSION_LABEL'],[('RECORDING_SESSION_LABEL','msd002')]
 )
