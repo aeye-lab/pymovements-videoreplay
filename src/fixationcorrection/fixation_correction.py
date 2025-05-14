@@ -247,6 +247,7 @@ class DataProcessing:
         dataframe.to_csv(self.csv_file, index=False)
 
     def filter_and_group(self, dataframe):
+        self.make_title()
         if self.filters:
             for col, value in self.filters:
                 if isinstance(value, list):
@@ -259,6 +260,17 @@ class DataProcessing:
             return [group.copy() for _, group in grouped]
         else:
             return [dataframe.copy()]
+
+    def make_title(self):
+        all_filters = []
+        for col, value in self.filters:
+            all_filters.append(value)
+        flattened = [item for sublist in all_filters for item in sublist]
+        title = '_'.join(flattened)
+        return title
+
+
+
 
 
 
@@ -287,16 +299,19 @@ def run_fixation_correction(csv_file, x_column, y_column, image_column, image_fo
 
     # save the corrected data in a new file
     if corrected_dataframes:
+        new_folder_name = 'corrected_fixations'
         combined_dataframe = pd.concat(corrected_dataframes,ignore_index=True)
         directory = os.path.dirname(csv_file)
+        os.makedirs(os.path.join(directory, new_folder_name), exist_ok=True)
         filename = os.path.basename(csv_file)
         name, ext = os.path.splitext(filename)
-        new_filename = f"{name}_fixation_corrected{ext}"
-        new_path = os.path.join(directory, new_filename)
+        title = prepared.make_title()
+        new_filename = f"{name}_fixation_corrected_{title}{ext}"
+        new_path = os.path.join(directory,new_folder_name, new_filename)
         combined_dataframe.to_csv(new_path, index=False)
 
 
 run_fixation_correction(
     '18sat_fixfinal.csv', 'CURRENT_FIX_X', 'CURRENT_FIX_Y',
-    'page_name', 'reading screenshot',['RECORDING_SESSION_LABEL'],[('RECORDING_SESSION_LABEL','msd002')]
+    'page_name', 'reading screenshot',['RECORDING_SESSION_LABEL'],[('RECORDING_SESSION_LABEL', ['msd002','msd001']), ('page_name', ['reading-dickens-1'])]
 )
