@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import os
+
 import cv2
 import ocr_reader
 import pandas as pd
@@ -60,7 +62,7 @@ class FixationCorrection:
         x, y = self.fixation_coordinates[self.current_fixation_index]
 
         if not self.original_fixation:
-            self.original_fixation = (x,y)
+            self.original_fixation = (x, y)
 
         if self.point_movement_mode == 1:
             if direction == 'up':
@@ -162,22 +164,25 @@ class FixationCorrection:
             # Display the image with the overlaid points
             cv2.imshow(f'Page {self.image_path}', image_with_points)
             cv2.setWindowTitle(
-                f'Page {self.image_path}', self.image_path[:-
-                                                           4] + ' ' + self.title,
+                f'Page {self.image_path}', self.image_path[
+                    :-
+                    4
+                ] + ' ' + self.title,
             )
 
             # Wait for a key press to move or select next point
             cv2.waitKey(0) & 0xFF  # Get key press
 
             if not self.correction:
-                #self.save_corrected_fixations()
+                # self.save_corrected_fixations()
                 cv2.destroyAllWindows()
                 return
 
         cv2.destroyAllWindows()
 
     def save_corrected_fixations(self):
-        self.pandas_dataframe[['x_corrected', 'y_corrected']] = pd.DataFrame(self.fixation_coordinates)
+        self.pandas_dataframe[['x_corrected', 'y_corrected']
+                              ] = pd.DataFrame(self.fixation_coordinates)
 
     def get_ocr_centers(self):
         reader = ocr_reader.OCR_Reader(self.image_path)
@@ -205,10 +210,14 @@ class FixationCorrection:
         box_bottom_right = (360, 60)
 
         # Draw the box
-        cv2.rectangle(self.image, box_top_left, box_bottom_right,
-                      (200, 200, 200), -1)  # Grey background
-        cv2.rectangle(self.image, box_top_left, box_bottom_right,
-                      (0, 0, 0), 1)  # Black border
+        cv2.rectangle(
+            self.image, box_top_left, box_bottom_right,
+            (200, 200, 200), -1,
+        )  # Grey background
+        cv2.rectangle(
+            self.image, box_top_left, box_bottom_right,
+            (0, 0, 0), 1,
+        )  # Black border
 
         # Add text
         cv2.putText(
@@ -231,7 +240,6 @@ class DataProcessing:
         self.filters = filters
 
         self.groups.append(self.image_column)
-
 
     def prepare_data(self):
         raw_data = pd.read_csv(self.csv_file)
@@ -261,10 +269,9 @@ class DataProcessing:
             return [dataframe.copy()]
 
 
-
 def run_fixation_correction(csv_file, x_column, y_column, image_column, image_folder, groups=None, filters=None):
     prepared = DataProcessing(
-        csv_file, x_column, y_column, image_column, image_folder, groups, filters
+        csv_file, x_column, y_column, image_column, image_folder, groups, filters,
     )
     dataframes = prepared.prepare_data()
 
@@ -283,11 +290,9 @@ def run_fixation_correction(csv_file, x_column, y_column, image_column, image_fo
                 # fix.save_corrected_fixations()
                 corrected_dataframes.append(fix.pandas_dataframe)
 
-
-
     # save the corrected data in a new file
     if corrected_dataframes:
-        combined_dataframe = pd.concat(corrected_dataframes,ignore_index=True)
+        combined_dataframe = pd.concat(corrected_dataframes, ignore_index=True)
         directory = os.path.dirname(csv_file)
         filename = os.path.basename(csv_file)
         name, ext = os.path.splitext(filename)
@@ -298,5 +303,6 @@ def run_fixation_correction(csv_file, x_column, y_column, image_column, image_fo
 
 run_fixation_correction(
     '18sat_fixfinal.csv', 'CURRENT_FIX_X', 'CURRENT_FIX_Y',
-    'page_name', 'reading screenshot',['RECORDING_SESSION_LABEL'],[('RECORDING_SESSION_LABEL','msd002')]
+    'page_name', 'reading screenshot', ['RECORDING_SESSION_LABEL'], [
+        ('RECORDING_SESSION_LABEL', 'msd002')],
 )
