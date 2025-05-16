@@ -85,8 +85,11 @@ class AntiOCR:
             column_mapping[filter_col] = filter_col
 
         try:
-            csv_files = [f for f in Path(csv_path).glob(
-                '*.csv') if 'fixfinal' in f.name]
+            csv_files = [
+                f for f in Path(csv_path).glob(
+                    '*.csv',
+                ) if 'fixfinal' in f.name
+            ]
 
             if not csv_files:
                 print(f"ERROR: No valid CSV file found in {csv_path}!")
@@ -119,7 +122,7 @@ class AntiOCR:
 
         image = np.ones(
             (self.frame_height, self.frame_width, 3),
-            dtype=np.uint8
+            dtype=np.uint8,
         ) * 255
 
         for _, row in df.iterrows():
@@ -140,7 +143,7 @@ class AntiOCR:
         valid_extensions = ['.png', '.jpg', '.jpeg', '.bmp']
         if not any(str(output_path).lower().endswith(ext) for ext in valid_extensions):
             print(
-                'ERROR: Output file must have a valid image extension (e.g., .png or .jpg)'
+                'ERROR: Output file must have a valid image extension (e.g., .png or .jpg)',
             )
             return
 
