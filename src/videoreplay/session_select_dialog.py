@@ -37,7 +37,7 @@ class SessionSelectDialog(simpledialog.Dialog):
     ``SessionSelectDialog(parent, sessions).result`` to obtain the choice.
     """
 
-    def __init__(self, parent: tk.Misc, sessions: list[str], title: str = "Select session"):
+    def __init__(self, parent: tk.Misc, sessions: list[str], title: str = 'Select session'):
         self._listbox = None
         self._sessions = sessions
         self.result: str | None = None
@@ -47,18 +47,19 @@ class SessionSelectDialog(simpledialog.Dialog):
         """Create the list-box UI and return the widget that gets initial focus."""
         self.minsize(400, 150)
 
-        ttk.Label(master, text="Choose a recording session:").pack(padx=8, pady=(8, 4))
+        ttk.Label(master, text='Choose a recording session:').pack(
+            padx=8, pady=(8, 4))
 
         self._listbox = tk.Listbox(
             master,
             width=40,
             height=min(15, len(self._sessions)),
-            exportselection=False
+            exportselection=False,
         )
         for session in self._sessions:
             self._listbox.insert(tk.END, session)
         self._listbox.selection_set(0)
-        self._listbox.pack(padx=8, pady=(0, 8), fill="both", expand=True)
+        self._listbox.pack(padx=8, pady=(0, 8), fill='both', expand=True)
         return self._listbox
 
     def apply(self):

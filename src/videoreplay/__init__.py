@@ -14,7 +14,6 @@ Main Components
 - **SessionSelectDialog** – Tk-inter dialog for choosing one of the
   loaded recording sessions before fixation navigation.
 """
-
 from .column_mapping_dialog import ColumnMappingDialog
 from .session_select_dialog import SessionSelectDialog
 from .video_player import VideoPlayer
@@ -22,5 +21,5 @@ from .video_player import VideoPlayer
 __all__: list[str] = [
     'VideoPlayer',
     'ColumnMappingDialog',
-    'SessionSelectDialog'
+    'SessionSelectDialog',
 ]

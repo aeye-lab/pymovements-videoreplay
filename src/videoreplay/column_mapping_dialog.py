@@ -73,45 +73,61 @@ class ColumnMappingDialog(simpledialog.Dialog):
         """Build and lay out the dialog widgets; return the widget to focus."""
         self.title('Configure Column Mapping')
 
-        (ttk.Label(master, text='X-coordinate column; e.g. CURRENT_FIX_X:')
-         .grid(row=0, column=0, sticky='w', pady=2))
+        (
+            ttk.Label(master, text='X-coordinate column; e.g. CURRENT_FIX_X:')
+            .grid(row=0, column=0, sticky='w', pady=2)
+        )
         self.pixel_x_entry = ttk.Entry(master, width=30)
         self.pixel_x_entry.grid(row=0, column=1, pady=2)
 
-        (ttk.Label(master, text='Y-coordinate column; e.g. CURRENT_FIX_Y:')
-         .grid(row=1, column=0, sticky='w', pady=2))
+        (
+            ttk.Label(master, text='Y-coordinate column; e.g. CURRENT_FIX_Y:')
+            .grid(row=1, column=0, sticky='w', pady=2)
+        )
         self.pixel_y_entry = ttk.Entry(master, width=30)
         self.pixel_y_entry.grid(row=1, column=1, pady=2)
 
-        (ttk.Label(master, text='Recording session column; e.g. RECORDING_SESSION_LABEL:')
-         .grid(row=2, column=0, sticky='w', pady=2))
+        (
+            ttk.Label(
+                master, text='Recording session column; e.g. RECORDING_SESSION_LABEL:')
+            .grid(row=2, column=0, sticky='w', pady=2)
+        )
         self.session_entry = ttk.Entry(master, width=30)
         self.session_entry.grid(row=2, column=1, pady=2)
 
-        (ttk.Label(master, text='Page name column; e.g. page_name:')
-         .grid(row=3, column=0, sticky='w', pady=2))
+        (
+            ttk.Label(master, text='Page name column; e.g. page_name:')
+            .grid(row=3, column=0, sticky='w', pady=2)
+        )
         self.page_name_entry = ttk.Entry(master, width=30)
         self.page_name_entry.grid(row=3, column=1, pady=2)
 
-        (ttk.Label(master, text='Timestamp column (optional):')
-         .grid(row=4, column=0, sticky='w', pady=2))
+        (
+            ttk.Label(master, text='Timestamp column (optional):')
+            .grid(row=4, column=0, sticky='w', pady=2)
+        )
         self.time_entry = ttk.Entry(master, width=30)
         self.time_entry.grid(row=4, column=1, pady=2)
 
-        (ttk.Label(master, text='Duration column (optional); e.g. CURRENT_FIX_DURATION:')
-         .grid(row=5, column=0, sticky='w', pady=2))
+        (
+            ttk.Label(
+                master, text='Duration column (optional); e.g. CURRENT_FIX_DURATION:')
+            .grid(row=5, column=0, sticky='w', pady=2)
+        )
         self.duration_entry = ttk.Entry(master, width=30)
         self.duration_entry.grid(row=5, column=1, pady=2)
 
-        (ttk.Label(
-            master,
-            text=(
-                'Other filters '
-                "(comma-separated, use '=' for column and '|' for alternatives; "
-                'e.g.  trial_date=1998-06-02, '
-                'trial_number=1|2):'
-            )
-        ).grid(row=6, column=0, columnspan=2, sticky='w', pady=2))
+        (
+            ttk.Label(
+                master,
+                text=(
+                    'Other filters '
+                    "(comma-separated, use '=' for column and '|' for alternatives; "
+                    'e.g.  trial_date=1998-06-02, '
+                    'trial_number=1|2):'
+                ),
+            ).grid(row=6, column=0, columnspan=2, sticky='w', pady=2)
+        )
         self.filters_entry = ttk.Entry(master, width=50)
         self.filters_entry.grid(row=7, column=0, columnspan=2, pady=2)
 
@@ -130,28 +146,28 @@ class ColumnMappingDialog(simpledialog.Dialog):
         if not (pixel_x and pixel_y):
             messagebox.showerror(
                 'Error',
-                'X and Y coordinate column names are required.'
+                'X and Y coordinate column names are required.',
             )
             return None
 
         if not page_name:
             messagebox.showerror(
                 'Error',
-                'Page name column name is required.'
+                'Page name column name is required.',
             )
             return None
 
         if not session:
             messagebox.showerror(
                 'Error',
-                'Recording session column name is required.'
+                'Recording session column name is required.',
             )
             return None
 
         if not (time or duration):
             messagebox.showerror(
                 'Error',
-                'You must provide at least a timestamp or a duration column name.'
+                'You must provide at least a timestamp or a duration column name.',
             )
             return None
 
@@ -161,13 +177,15 @@ class ColumnMappingDialog(simpledialog.Dialog):
                 for pair in (p.strip() for p in raw_filters.split(',') if p.strip()):
                     if '=' not in pair:
                         raise ValueError(
-                            f"Missing '=' in filter pair: '{pair}'")
+                            f"Missing '=' in filter pair: '{pair}'",
+                        )
                     col, val = pair.split('=', 1)
                     values = [v.strip() for v in val.split('|') if v.strip()]
 
                     if not values:
                         raise ValueError(
-                            f"No value specified for column '{col.strip()}'")
+                            f"No value specified for column '{col.strip()}'",
+                        )
                     filters[col.strip()] = values
 
             except ValueError as err:

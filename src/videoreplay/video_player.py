@@ -103,7 +103,8 @@ class VideoPlayer:
                 for col, allowed in mapping['filter_columns'].items():
                     if col not in base_df.columns:
                         print(
-                            f"WARNING: Filter column '{col}' not found in data; ignoring filter.")
+                            f"WARNING: Filter column '{col}' not found in data; ignoring filter.",
+                        )
                         continue
                     filter_conditions &= base_df[col].isin(allowed)
 
@@ -119,11 +120,13 @@ class VideoPlayer:
                     session_df.sort_values(by='time', inplace=True)
                 elif 'duration' in session_df.columns:
                     session_df['time'] = session_df['duration'].cumsum().shift(
-                        fill_value=0)
+                        fill_value=0,
+                    )
                     session_df.sort_values(by='time', inplace=True)
                 else:
                     print(
-                        "ERROR: Neither 'time' nor 'duration' column found after mapping.")
+                        "ERROR: Neither 'time' nor 'duration' column found after mapping.",
+                    )
                     continue
 
                 session_df['pixel'] = list(
@@ -290,7 +293,7 @@ class VideoPlayer:
     def _select_recording_session(self) -> pd.DataFrame | None:
         """Open a Tk dialog to pick a loaded recording session."""
         if not self.gaze_dfs:
-            print("No recording sessions loaded.")
+            print('No recording sessions loaded.')
             return None
 
         root = tk.Tk()
