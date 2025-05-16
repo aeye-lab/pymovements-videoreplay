@@ -90,7 +90,11 @@ class VideoPlayer:
             print(f"Loading gaze data from: {csv_file}")
 
             base_df = pd.read_csv(
-                csv_file, usecols=list(column_mapping.keys()),
+                csv_file,
+                sep=None,
+                engine='python',
+                encoding='utf-8-sig',
+                usecols=list(column_mapping.keys())
             )
             base_df.rename(columns=column_mapping, inplace=True)
 
