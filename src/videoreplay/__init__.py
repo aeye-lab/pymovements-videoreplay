@@ -1,19 +1,19 @@
 """
-videoreplay: A package for replaying eye-tracking recordings with gaze overlays.
+videoreplay
+===========
 
-This package provides tools for visualizing and analyzing eye-tracking data,
-including video playback with gaze overlays and integration with public datasets.
+Tools for visualising and analysing eye-tracking data, including video
+or image playback with gaze overlays and helpers for column mapping.
 
-Main Components:
-- `VideoPlayer`: For replaying videos with gaze overlays.
-
-Example Usage:
-    from videoreplay import VideoPlayer
-
-    player = VideoPlayer(video_path="stimulus.mp4",
-                     dataset_path="data/ToyDataset",
-                     dataset_name="ToyDataset")
+Main Components
+---------------
+- **VideoPlayer** – plays a stimulus (image/video) with one-or-many gaze
+  recordings overlaid, and can export the replay.
+- **ColumnMappingDialog** – a Tk-inter dialog that lets the user map the
+  column names in their CSV file to the fields `VideoPlayer` expects.
 """
-from .video_player import VideoPlayer
 
-__all__ = ['VideoPlayer']
+from .video_player import VideoPlayer
+from .column_mapping_dialog import ColumnMappingDialog
+
+__all__ = ["VideoPlayer", "ColumnMappingDialog"]

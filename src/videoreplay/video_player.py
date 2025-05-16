@@ -5,12 +5,18 @@ gaze replays from fixation data on both image and video stimuli.
 """
 from __future__ import annotations
 
-import os
+# ── standard library ────────────────────────────────────────────────
 from pathlib import Path
+import os
+import tkinter as tk
 
+# ── third-party libraries ───────────────────────────────────────────
 import cv2
 import numpy as np
 import pandas as pd
+
+# ── local package ───────────────────────────────────────────────────
+from videoreplay.column_mapping_dialog import ColumnMappingDialog
 
 
 class VideoPlayer:
@@ -34,23 +40,38 @@ class VideoPlayer:
         self.is_image = self._is_image()
 
         self.overlay_colors = [
-            (255, 0, 0),      # Blue
-            (0, 255, 255),    # Yellow
-            (128, 0, 128),    # Purple
-            (0, 165, 255),    # Orange
-            (255, 255, 0),    # Cyan
+            (255, 0, 0),  # Blue
+            (0, 255, 255),  # Yellow
+            (128, 0, 128),  # Purple
+            (0, 165, 255),  # Orange
+            (255, 255, 0),  # Cyan
         ]  # Color are in BGR format and not RGB
         self.dot_radius = 5
-
         self.gaze_dfs: list[tuple[str, pd.DataFrame]] = []
 
+        root = tk.Tk()
+        root.withdraw()
+        mapping = ColumnMappingDialog(root, title="Column Mapping").result
+        root.destroy()
+
+        if mapping is None:
+            raise ValueError("Column mapping configuration cancelled by user.")
+
         column_mapping = {
-            'CURRENT_FIX_X': 'pixel_x',  # Rename X-coordinate
-            'CURRENT_FIX_Y': 'pixel_y',  # Rename Y-coordinate
-            'CURRENT_FIX_DURATION': 'duration',  # This will be used to calculate time
-            'page_name': 'page_name',  # Used for filtering
-            'RECORDING_SESSION_LABEL': 'recording_session',  # Used for filtering
+            mapping['pixel_x']: 'pixel_x',
+            mapping['pixel_y']: 'pixel_y',
+            mapping['recording_session']: 'recording_session',
+            mapping['page_name']: 'page_name'
         }
+
+        if mapping['time']:
+            column_mapping[mapping['time']] = 'time'
+
+        if mapping['duration']:
+            column_mapping[mapping['duration']] = 'duration'
+
+        for filter_col in mapping['filter_columns']:
+            column_mapping[filter_col] = filter_col
 
         try:
             csv_files = [f for f in Path(dataset_path).glob(
@@ -68,22 +89,33 @@ class VideoPlayer:
             base_df.rename(columns=column_mapping, inplace=True)
 
             for session in recording_sessions:
-                session_df = base_df[
-                    (base_df['page_name'] == stimulus_name)
-                    & (base_df['recording_session'] == session)
-                ].copy()
+                filter_conditions = (
+                        (base_df['recording_session'] == session) &
+                        (base_df['page_name'] == stimulus_name)
+                )
+
+                for col, allowed in mapping['filter_columns'].items():
+                    if col not in base_df.columns:
+                        print(f"WARNING: Filter column '{col}' not found in data; ignoring filter.")
+                        continue
+                    filter_conditions &= base_df[col].isin(allowed)
+
+                session_df = base_df[filter_conditions].copy()
 
                 if session_df.empty:
                     print(
                         f"WARNING: No data for session '{session}' and stimulus '{stimulus_name}' found")
                     continue
 
-                # Compute Cumulative Time (Start at 0)
-                session_df['time'] = session_df['duration'].cumsum().shift(
-                    fill_value=0)
-                session_df.sort_values(by='time', inplace=True)
+                if 'time' in session_df.columns:
+                    session_df.sort_values(by='time', inplace=True)
+                elif 'duration' in session_df.columns:
+                    session_df['time'] = session_df['duration'].cumsum().shift(fill_value=0)
+                    session_df.sort_values(by='time', inplace=True)
+                else:
+                    print("ERROR: Neither 'time' nor 'duration' column found after mapping.")
+                    continue
 
-                # Combine pixel columns
                 session_df['pixel'] = list(
                     zip(session_df['pixel_x'], session_df['pixel_y']))
 
@@ -161,7 +193,7 @@ class VideoPlayer:
         # Normalize timestamps: shift them to start from 0
         min_time = df['time'].min()  # Get the first timestamp
         df['normalized_time'] = (df['time'] - min_time) / \
-            1000.0  # Convert ms → s
+                                1000.0  # Convert ms → s
 
         # Convert timestamps to frame indices using FPS
         df['frame_idx'] = np.clip(
