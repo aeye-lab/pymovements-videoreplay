@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 
 from videoreplay.column_mapping_dialog import ColumnMappingDialog
+from videoreplay.session_select_dialog import SessionSelectDialog
 # ── standard library ────────────────────────────────────────────────
 # ── third-party libraries ───────────────────────────────────────────
 # ── local package ───────────────────────────────────────────────────
@@ -287,24 +288,23 @@ class VideoPlayer:
             self._navigate_fixations_on_video(df)
 
     def _select_recording_session(self) -> pd.DataFrame | None:
-        """Prompt user to select a recording session from available ones."""
+        """Open a Tk dialog to pick a loaded recording session."""
         if not self.gaze_dfs:
-            print('No recording sessions loaded.')
+            print("No recording sessions loaded.")
             return None
 
-        session_prompt = 'Select a session by number:\n\n'
-        for i, (session_name, _) in enumerate(self.gaze_dfs):
-            session_prompt += f"  {i + 1}: {session_name}\n"
-        session_prompt += '\nYour choice: '
+        root = tk.Tk()
+        root.withdraw()
+        sessions = [name for name, _ in self.gaze_dfs]
+        choice = SessionSelectDialog(root, sessions).result
+        root.destroy()
 
-        try:
-            choice = int(input(session_prompt)) - 1
-            if 0 <= choice < len(self.gaze_dfs):
-                return self.gaze_dfs[choice][1]
-            else:
-                print('Invalid selection.')
-        except ValueError:
-            print('Invalid input. Please enter a number.')
+        if choice is None:
+            return None
+
+        for name, df in self.gaze_dfs:
+            if name == choice:
+                return df
 
         return None
 

@@ -73,45 +73,45 @@ class ColumnMappingDialog(simpledialog.Dialog):
         """Build and lay out the dialog widgets; return the widget to focus."""
         self.title('Configure Column Mapping')
 
-        ttk.Label(master, text='X-coordinate column:').grid(row=0,
-                                                            column=0, sticky='w', pady=2)
+        (ttk.Label(master, text='X-coordinate column; e.g. CURRENT_FIX_X:')
+         .grid(row=0, column=0, sticky='w', pady=2))
         self.pixel_x_entry = ttk.Entry(master, width=30)
         self.pixel_x_entry.grid(row=0, column=1, pady=2)
 
-        ttk.Label(master, text='Y-coordinate column:').grid(row=1,
-                                                            column=0, sticky='w', pady=2)
+        (ttk.Label(master, text='Y-coordinate column; e.g. CURRENT_FIX_Y:')
+         .grid(row=1, column=0, sticky='w', pady=2))
         self.pixel_y_entry = ttk.Entry(master, width=30)
         self.pixel_y_entry.grid(row=1, column=1, pady=2)
 
-        ttk.Label(master, text='Recording session column:').grid(
-            row=2, column=0, sticky='w', pady=2)
+        (ttk.Label(master, text='Recording session column; e.g. RECORDING_SESSION_LABEL:')
+         .grid(row=2, column=0, sticky='w', pady=2))
         self.session_entry = ttk.Entry(master, width=30)
         self.session_entry.grid(row=2, column=1, pady=2)
 
-        ttk.Label(master, text='Page name column:').grid(
-            row=3, column=0, sticky='w', pady=2)
+        (ttk.Label(master, text='Page name column; e.g. page_name:')
+         .grid(row=3, column=0, sticky='w', pady=2))
         self.page_name_entry = ttk.Entry(master, width=30)
         self.page_name_entry.grid(row=3, column=1, pady=2)
 
-        ttk.Label(master, text='Timestamp column (optional):').grid(
-            row=4, column=0, sticky='w', pady=2)
+        (ttk.Label(master, text='Timestamp column (optional):')
+         .grid(row=4, column=0, sticky='w', pady=2))
         self.time_entry = ttk.Entry(master, width=30)
         self.time_entry.grid(row=4, column=1, pady=2)
 
-        ttk.Label(master, text='Duration column (optional):').grid(
-            row=5, column=0, sticky='w', pady=2)
+        (ttk.Label(master, text='Duration column (optional); e.g. CURRENT_FIX_DURATION:')
+         .grid(row=5, column=0, sticky='w', pady=2))
         self.duration_entry = ttk.Entry(master, width=30)
         self.duration_entry.grid(row=5, column=1, pady=2)
 
-        ttk.Label(
+        (ttk.Label(
             master,
             text=(
                 'Other filters '
                 "(comma-separated, use '=' for column and '|' for alternatives; "
                 'e.g.  trial_date=1998-06-02, '
                 'trial_number=1|2):'
-            ),
-        ).grid(row=6, column=0, columnspan=2, sticky='w', pady=2)
+            )
+        ).grid(row=6, column=0, columnspan=2, sticky='w', pady=2))
         self.filters_entry = ttk.Entry(master, width=50)
         self.filters_entry.grid(row=7, column=0, columnspan=2, pady=2)
 
@@ -129,21 +129,30 @@ class ColumnMappingDialog(simpledialog.Dialog):
 
         if not (pixel_x and pixel_y):
             messagebox.showerror(
-                'Error', 'X and Y coordinate column names are required.')
+                'Error',
+                'X and Y coordinate column names are required.'
+            )
             return None
 
         if not page_name:
-            messagebox.showerror('Error', 'Page name column name is required.')
+            messagebox.showerror(
+                'Error',
+                'Page name column name is required.'
+            )
             return None
 
         if not session:
             messagebox.showerror(
-                'Error', 'Recording session column name is required.')
+                'Error',
+                'Recording session column name is required.'
+            )
             return None
 
         if not (time or duration):
             messagebox.showerror(
-                'Error', 'You must provide at least a timestamp or a duration column name.')
+                'Error',
+                'You must provide at least a timestamp or a duration column name.'
+            )
             return None
 
         filters: dict[str, list[str]] = {}
