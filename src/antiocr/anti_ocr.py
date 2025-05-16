@@ -1,27 +1,38 @@
+"""Rebuild stimulus images from eye-tracking CSV data (reverse OCR).
+
+`AntiOCR` turns the usual OCR pipeline on its head: given each word and its
+recorded pixel coordinates, it recreates the original page as a flat image.
+"""
 from __future__ import annotations
 
+import tkinter as tk
 from pathlib import Path
 
 import cv2
 import numpy as np
 import pandas as pd
 
+from antiocr.column_mapping_dialog import ColumnMappingDialog
+# ── standard library ────────────────────────────────────────────────
+# ── third-party libraries ───────────────────────────────────────────
+# ── local package ───────────────────────────────────────────────────
+
 
 class AntiOCR:
-    """Generates a stimulus image using words placed at given pixel coordinates.
+    """
+    Render a stimulus image by drawing each `word` from an eye-tracking CSV
+    at its recorded pixel coordinates.
 
     Parameters
     ----------
-    frame_width : int
-        Width of the output image.
-    frame_height : int
-        Height of the output image.
-    font_scale : float, optional
-        Font scale for the text rendering (default is 1.0).
-    font_color : tuple[int, int, int], optional
-        Font color in BGR format (default is black).
-    font_thickness : int, optional
-        Thickness of the font (default is 1).
+    frame_width, frame_height : int
+        Output image dimensions in pixels.
+    font_scale : float, default 1.0
+        OpenCV font scale for the text.
+    font_color : tuple[int, int, int], default (0, 0, 0)
+        Text colour in BGR.
+    font_thickness : int, default 1
+        Stroke thickness used by ``cv2.putText``.
     """
 
     def __init__(
@@ -40,18 +51,43 @@ class AntiOCR:
         self.font = cv2.FONT_HERSHEY_SIMPLEX
 
     def generate_from_csv(self, csv_path: str, page_name: str, session: str, output_path: str):
-        """Generate a stimulus image using word annotations from a CSV file.
+        """Create and save a stimulus image from a word-annotation CSV.
 
         Parameters
         ----------
         csv_path : str
-            Path to the CSV file with columns: 'pixel_x', 'pixel_y', 'word'.
+            Directory containing the eye-tracking CSV export;
+        page_name : str
+            Page/stimulus identifier to extract.
+        session : str
+            Recording-session label to extract.
         output_path : str
-            File path to save the generated image (should end in .png or .jpg).
+            Destination image file; must end with ``.png``, ``.jpg``, ``.jpeg`` or
+            ``.bmp``.
         """
+        root = tk.Tk()
+        root.withdraw()
+        mapping = ColumnMappingDialog(root, title='Column Mapping').result
+        root.destroy()
+
+        if mapping is None:
+            raise ValueError('Column mapping configuration cancelled by user.')
+
+        column_mapping = {
+            mapping['pixel_x']: 'pixel_x',
+            mapping['pixel_y']: 'pixel_y',
+            mapping['interest_area_label']: 'word',
+            mapping['recording_session']: 'recording_session',
+            mapping['page_name']: 'page_name',
+        }
+
+        for filter_col in mapping['filter_columns']:
+            column_mapping[filter_col] = filter_col
+
         try:
             csv_files = [f for f in Path(csv_path).glob(
                 '*.csv') if 'fixfinal' in f.name]
+
             if not csv_files:
                 print(f"ERROR: No valid CSV file found in {csv_path}!")
                 return
@@ -59,30 +95,33 @@ class AntiOCR:
             csv_file = csv_files[0]
             print(f"Loading gaze data from: {csv_file}")
 
-            column_mapping = {
-                'CURRENT_FIX_X': 'pixel_x',  # Rename X-coordinate
-                'CURRENT_FIX_Y': 'pixel_y',  # Rename Y-coordinate
-                # Label which should be displayed at that coordinate
-                'CURRENT_FIX_INTEREST_AREA_LABEL': 'word',
-                'page_name': 'page_name',  # Used for filtering
-                'RECORDING_SESSION_LABEL': 'recording_session',  # Used for filtering
-            }
             df = pd.read_csv(csv_file, usecols=list(column_mapping.keys()))
             df.rename(columns=column_mapping, inplace=True)
-            df = df[(df['page_name'] == page_name) & (
-                df['recording_session'] == session)]
+
+            filter_conditions = (
+                (df['recording_session'] == session) &
+                (df['page_name'] == page_name)
+            )
+
+            for col, allowed in mapping['filter_columns'].items():
+                if col not in df.columns:
+                    print(
+                        f"WARNING: Filter column '{col}' not found in data; ignoring filter.",
+                    )
+                    continue
+                filter_conditions &= df[col].isin(allowed)
+
+            df = df[filter_conditions].copy()
 
         except Exception as e:
             print(f"Failed to load CSV: {e}")
             return
 
-        print(df.columns)
-        if not {'pixel_x', 'pixel_y', 'word'}.issubset(df.columns):
-            print("CSV must contain 'pixel_x', 'pixel_y', and 'word' columns.")
-            return
+        image = np.ones(
+            (self.frame_height, self.frame_width, 3),
+            dtype=np.uint8
+        ) * 255
 
-        image = np.ones((self.frame_height, self.frame_width, 3),
-                        dtype=np.uint8) * 255
         for _, row in df.iterrows():
             x, y = int(row['pixel_x']), int(row['pixel_y'])
             word = str(row['word'])
@@ -101,7 +140,8 @@ class AntiOCR:
         valid_extensions = ['.png', '.jpg', '.jpeg', '.bmp']
         if not any(str(output_path).lower().endswith(ext) for ext in valid_extensions):
             print(
-                'ERROR: Output file must have a valid image extension (e.g., .png or .jpg)')
+                'ERROR: Output file must have a valid image extension (e.g., .png or .jpg)'
+            )
             return
 
         success = cv2.imwrite(output_path, image)
