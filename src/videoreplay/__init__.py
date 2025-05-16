@@ -12,8 +12,7 @@ Main Components
 - **ColumnMappingDialog** – a Tk-inter dialog that lets the user map the
   column names in their CSV file to the fields `VideoPlayer` expects.
 """
-
-from .video_player import VideoPlayer
 from .column_mapping_dialog import ColumnMappingDialog
+from .video_player import VideoPlayer
 
-__all__ = ["VideoPlayer", "ColumnMappingDialog"]
+__all__ = ['VideoPlayer', 'ColumnMappingDialog']
