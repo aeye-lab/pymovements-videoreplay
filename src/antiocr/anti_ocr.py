@@ -106,10 +106,12 @@ class AntiOCR:
                 usecols=list(column_mapping.keys())
             )
             df.rename(columns=column_mapping, inplace=True)
+            df["normalized_page_name"] = df["page_name"].astype(str).apply(self._normalize_stimulus_name)
 
+            normalized_stimulus_name = self._normalize_stimulus_name(page_name)
             filter_conditions = (
                 (df['recording_session'] == session) &
-                (df['page_name'] == page_name)
+                (df['normalized_page_name'] == normalized_stimulus_name)
             )
 
             for col, allowed in mapping['filter_columns'].items():
@@ -158,3 +160,7 @@ class AntiOCR:
             print(f"Stimulus image successfully saved to: {output_path}")
         else:
             print(f"Failed to save image to: {output_path}")
+
+    def _normalize_stimulus_name(self, name: str) -> str:
+        """Return the base name **without** extension."""
+        return Path(name).stem.lower()
