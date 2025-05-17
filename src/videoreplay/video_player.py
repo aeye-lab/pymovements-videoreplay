@@ -363,6 +363,9 @@ class VideoPlayer:
         capture = cv2.VideoCapture(self.stimulus_path)
 
         fixations = df[df['pixel'].notna()]
+        # remove *consecutive* duplicates of the same frame_idx
+        dedup_mask = fixations["frame_idx"].diff().fillna(1).ne(0)
+        fixations = fixations[dedup_mask].reset_index(drop=True)
         if fixations.empty:
             print('ERROR: No valid fixations found!')
             return
