@@ -343,6 +343,9 @@ class VideoPlayer:
                 frame, pixel_coords, self.dot_radius,
                 self.overlay_colors[0], -1,
             )
+
+            self._draw_progress(frame, idx + 1, len(fixations))
+
             cv2.imshow('Fixation Navigation', frame)
             key = cv2.waitKey(10)
 
@@ -389,6 +392,9 @@ class VideoPlayer:
                 frame, pixel_coords, self.dot_radius,
                 self.overlay_colors[0], -1,
             )
+
+            self._draw_progress(frame, idx + 1, len(fixations))
+
             cv2.imshow('Fixation Navigation', frame)
             key = cv2.waitKey(0)  # Wait for key press
 
@@ -533,3 +539,28 @@ class VideoPlayer:
             )
 
         frame[10: 10 + legend.shape[0], 10: 10 + legend.shape[1]] = legend
+
+    def _draw_progress(self, frame, current: int, total: int):
+        text = f"{current} / {total}"
+
+        (w, h), baseline = cv2.getTextSize(
+            text,
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            1
+        )
+        pad = 6
+        badge = np.ones((h + baseline + 2 * pad, w + 2 * pad, 3), dtype=np.uint8) * 255
+
+        cv2.putText(
+            badge,
+            text,
+            (pad, h + pad),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            (0, 0, 0),
+            1,
+            cv2.LINE_AA
+        )
+
+        frame[10: 10 + badge.shape[0], 10: 10 + badge.shape[1]] = badge
