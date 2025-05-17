@@ -89,7 +89,8 @@ class ColumnMappingDialog(simpledialog.Dialog):
 
         (
             ttk.Label(
-                master, text='Recording session column; e.g. RECORDING_SESSION_LABEL:')
+                master, text='Recording session column; e.g. RECORDING_SESSION_LABEL:',
+            )
             .grid(row=2, column=0, sticky='w', pady=2)
         )
         self.session_entry = ttk.Entry(master, width=30)
@@ -111,7 +112,8 @@ class ColumnMappingDialog(simpledialog.Dialog):
 
         (
             ttk.Label(
-                master, text='Duration column (optional); e.g. CURRENT_FIX_DURATION:')
+                master, text='Duration column (optional); e.g. CURRENT_FIX_DURATION:',
+            )
             .grid(row=5, column=0, sticky='w', pady=2)
         )
         self.duration_entry = ttk.Entry(master, width=30)

@@ -48,7 +48,8 @@ class SessionSelectDialog(simpledialog.Dialog):
         self.minsize(400, 150)
 
         ttk.Label(master, text='Choose a recording session:').pack(
-            padx=8, pady=(8, 4))
+            padx=8, pady=(8, 4),
+        )
 
         self._listbox = tk.Listbox(
             master,

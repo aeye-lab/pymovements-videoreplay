@@ -91,15 +91,17 @@ class VideoPlayer:
                 sep=None,
                 engine='python',
                 encoding='utf-8-sig',
-                usecols=list(column_mapping.keys())
+                usecols=list(column_mapping.keys()),
             )
             base_df.rename(columns=column_mapping, inplace=True)
-            base_df["normalized_page_name"] = base_df["page_name"].astype(str).apply(self._normalize_stimulus_name)
+            base_df['normalized_page_name'] = base_df['page_name'].astype(
+                str).apply(self._normalize_stimulus_name)
 
             for session in recording_sessions:
                 filter_conditions = (
                     (base_df['recording_session'] == session) &
-                    (base_df['normalized_page_name'] == normalized_stimulus_name)
+                    (base_df['normalized_page_name']
+                     == normalized_stimulus_name)
                 )
 
                 for col, allowed in mapping['filter_columns'].items():
@@ -364,7 +366,7 @@ class VideoPlayer:
 
         fixations = df[df['pixel'].notna()]
         # remove *consecutive* duplicates of the same frame_idx
-        dedup_mask = fixations["frame_idx"].diff().fillna(1).ne(0)
+        dedup_mask = fixations['frame_idx'].diff().fillna(1).ne(0)
         fixations = fixations[dedup_mask].reset_index(drop=True)
         if fixations.empty:
             print('ERROR: No valid fixations found!')
@@ -550,10 +552,11 @@ class VideoPlayer:
             text,
             cv2.FONT_HERSHEY_SIMPLEX,
             0.5,
-            1
+            1,
         )
         pad = 6
-        badge = np.ones((h + baseline + 2 * pad, w + 2 * pad, 3), dtype=np.uint8) * 255
+        badge = np.ones((h + baseline + 2 * pad, w + 2 *
+                        pad, 3), dtype=np.uint8) * 255
 
         cv2.putText(
             badge,
@@ -563,7 +566,7 @@ class VideoPlayer:
             0.5,
             (0, 0, 0),
             1,
-            cv2.LINE_AA
+            cv2.LINE_AA,
         )
 
         frame[10: 10 + badge.shape[0], 10: 10 + badge.shape[1]] = badge
