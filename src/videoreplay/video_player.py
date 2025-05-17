@@ -35,10 +35,7 @@ class VideoPlayer:
 
     def __init__(self, stimulus_path: str, dataset_path: str, recording_sessions: list[str]):
         self.stimulus_path = stimulus_path
-        stimulus_name = os.path.basename(stimulus_path)
-        stimulus_name = os.path.splitext(stimulus_name)[
-            0
-        ]  # Remove the extension
+        normalized_stimulus_name = self._normalize_stimulus_name(stimulus_path)
         self.is_image = self._is_image()
 
         self.overlay_colors = [
@@ -97,11 +94,12 @@ class VideoPlayer:
                 usecols=list(column_mapping.keys())
             )
             base_df.rename(columns=column_mapping, inplace=True)
+            base_df["normalized_page_name"] = base_df["page_name"].astype(str).apply(self._normalize_stimulus_name)
 
             for session in recording_sessions:
                 filter_conditions = (
                     (base_df['recording_session'] == session) &
-                    (base_df['page_name'] == stimulus_name)
+                    (base_df['normalized_page_name'] == normalized_stimulus_name)
                 )
 
                 for col, allowed in mapping['filter_columns'].items():
@@ -116,7 +114,7 @@ class VideoPlayer:
 
                 if session_df.empty:
                     print(
-                        f"WARNING: No data for session '{session}' and stimulus '{stimulus_name}' found",
+                        f"WARNING: No data for session '{session}' and stimulus '{normalized_stimulus_name}' found",
                     )
                     continue
 
@@ -145,6 +143,10 @@ class VideoPlayer:
 
         if self.is_image:
             self.image = cv2.imread(self.stimulus_path)
+
+    def _normalize_stimulus_name(self, name: str) -> str:
+        """Return the base name **without** extension."""
+        return Path(name).stem.lower()
 
     def _is_image(self):
         """Check if the provided stimulus is an image."""
