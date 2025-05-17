@@ -1,5 +1,4 @@
-"""
-antiocr: A package for generating stimulus images from eye-tracking annotations.
+"""A package for generating stimulus images from eye-tracking annotations.
 
 This package provides utilities for creating stimulus images using word labels
 and pixel coordinates, effectively reversing the OCR process.
