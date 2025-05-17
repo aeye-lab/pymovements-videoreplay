@@ -71,7 +71,8 @@ class ColumnMappingDialog(simpledialog.Dialog):
 
         (
             ttk.Label(
-                master, text='X-coordinate column; e.g. CURRENT_FIX_X_INTEREST_AREA:')
+                master, text='X-coordinate column; e.g. CURRENT_FIX_X_INTEREST_AREA:',
+            )
             .grid(row=0, column=0, sticky='w', pady=2)
         )
         self.pixel_x_entry = ttk.Entry(master, width=30)
@@ -79,7 +80,8 @@ class ColumnMappingDialog(simpledialog.Dialog):
 
         (
             ttk.Label(
-                master, text='Y-coordinate column; e.g. CURRENT_FIX_Y_INTEREST_AREA:')
+                master, text='Y-coordinate column; e.g. CURRENT_FIX_Y_INTEREST_AREA:',
+            )
             .grid(row=1, column=0, sticky='w', pady=2)
         )
         self.pixel_y_entry = ttk.Entry(master, width=30)
@@ -87,7 +89,8 @@ class ColumnMappingDialog(simpledialog.Dialog):
 
         (
             ttk.Label(
-                master, text='Interest area label column; e.g. CURRENT_FIX_INTEREST_AREA_LABEL:')
+                master, text='Interest area label column; e.g. CURRENT_FIX_INTEREST_AREA_LABEL:',
+            )
             .grid(row=2, column=0, sticky='w', pady=2)
         )
         self.interest_area_label_entry = ttk.Entry(master, width=30)
@@ -95,7 +98,8 @@ class ColumnMappingDialog(simpledialog.Dialog):
 
         (
             ttk.Label(
-                master, text='Recording session column; e.g. RECORDING_SESSION_LABEL:')
+                master, text='Recording session column; e.g. RECORDING_SESSION_LABEL:',
+            )
             .grid(row=3, column=0, sticky='w', pady=2)
         )
         self.session_entry = ttk.Entry(master, width=30)
@@ -135,12 +139,14 @@ class ColumnMappingDialog(simpledialog.Dialog):
 
         if not (pixel_x and pixel_y):
             messagebox.showerror(
-                'Error', 'X and Y coordinate column names are required.')
+                'Error', 'X and Y coordinate column names are required.',
+            )
             return None
 
         if not interest_area_label:
             messagebox.showerror(
-                'Error', 'Interest area label column name is required.')
+                'Error', 'Interest area label column name is required.',
+            )
             return None
 
         if not page_name:
@@ -149,7 +155,8 @@ class ColumnMappingDialog(simpledialog.Dialog):
 
         if not session:
             messagebox.showerror(
-                'Error', 'Recording session column name is required.')
+                'Error', 'Recording session column name is required.',
+            )
             return None
 
         filters: dict[str, list[str]] = {}
@@ -158,13 +165,15 @@ class ColumnMappingDialog(simpledialog.Dialog):
                 for pair in (p.strip() for p in raw_filters.split(',') if p.strip()):
                     if '=' not in pair:
                         raise ValueError(
-                            f"Missing '=' in filter pair: '{pair}'")
+                            f"Missing '=' in filter pair: '{pair}'",
+                        )
                     col, val = pair.split('=', 1)
                     values = [v.strip() for v in val.split('|') if v.strip()]
 
                     if not values:
                         raise ValueError(
-                            f"No value specified for column '{col.strip()}'")
+                            f"No value specified for column '{col.strip()}'",
+                        )
                     filters[col.strip()] = values
 
             except ValueError as err:

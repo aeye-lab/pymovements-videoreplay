@@ -103,10 +103,11 @@ class AntiOCR:
                 sep=None,
                 engine='python',
                 encoding='utf-8-sig',
-                usecols=list(column_mapping.keys())
+                usecols=list(column_mapping.keys()),
             )
             df.rename(columns=column_mapping, inplace=True)
-            df["normalized_page_name"] = df["page_name"].astype(str).apply(self._normalize_stimulus_name)
+            df['normalized_page_name'] = df['page_name'].astype(
+                str).apply(self._normalize_stimulus_name)
 
             normalized_stimulus_name = self._normalize_stimulus_name(page_name)
             filter_conditions = (
