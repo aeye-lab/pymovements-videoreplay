@@ -98,7 +98,13 @@ class AntiOCR:
             csv_file = csv_files[0]
             print(f"Loading gaze data from: {csv_file}")
 
-            df = pd.read_csv(csv_file, usecols=list(column_mapping.keys()))
+            df = pd.read_csv(
+                csv_file,
+                sep=None,
+                engine='python',
+                encoding='utf-8-sig',
+                usecols=list(column_mapping.keys())
+            )
             df.rename(columns=column_mapping, inplace=True)
 
             filter_conditions = (
