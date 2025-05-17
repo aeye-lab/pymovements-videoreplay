@@ -50,7 +50,7 @@ class VideoPlayer:
     stimulus_path : str
         Path to the stimulus image or video file.
     dataset_path : str
-        Path to the directory containing the eye-tracking CSV data.
+        Path to the eye-tracking CSV file.
     recording_sessions : list[str]
         List of recording session labels used to filter the dataset.
 
@@ -105,17 +105,12 @@ class VideoPlayer:
             column_mapping[filter_col] = filter_col
 
         try:
-            csv_files = [
-                f for f in Path(dataset_path).glob(
-                    '*.csv',
-                ) if 'fixfinal' in f.name
-            ]
+            csv_file = Path(dataset_path)
 
-            if not csv_files:
-                print(f"ERROR: No valid CSV file found in {dataset_path}!")
+            if not csv_file.is_file():
+                print(f"ERROR: CSV file not found: {dataset_path}")
                 return
 
-            csv_file = csv_files[0]
             print(f"Loading gaze data from: {csv_file}")
 
             base_df = pd.read_csv(
