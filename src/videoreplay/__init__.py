@@ -1,12 +1,11 @@
-"""
-videoreplay
-===========
+"""Tools for visualising and analysing eye-tracking data.
 
-Tools for visualising and analysing eye-tracking data, including image or
-video playback with gaze overlays and small helper dialogs.
+Includes image or video playback with gaze overlays
+and small helper dialogs.
 
 Main Components
 ---------------
+
 - **VideoPlayer** – plays a stimulus (image/video) with one-or-many gaze
   recordings overlaid and can export the replay.
 - **ColumnMappingDialog** – Tk-inter dialog for mapping CSV column names

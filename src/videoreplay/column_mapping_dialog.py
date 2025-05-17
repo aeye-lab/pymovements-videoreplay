@@ -12,12 +12,11 @@ import tkinter as tk
 from tkinter import messagebox
 from tkinter import simpledialog
 from tkinter import ttk
+from typing import cast
 
 
 class ColumnMappingDialog(simpledialog.Dialog):
-    """
-    Dialog for defining how CSV columns map to the fields `VideoPlayer`
-    needs.
+    """Dialog for defining how CSV columns map to `VideoPlayer` fields.
 
     The user is asked to enter
 
@@ -29,37 +28,41 @@ class ColumnMappingDialog(simpledialog.Dialog):
       ``col=value1|value2, other_col=foo``
 
     After the user clicks **OK** the dialog stores a dictionary in
-    ``self.result``:
+    ``self.result``::
 
-    ```
-    {
-        "pixel_x":                <str>,
-        "pixel_y":                <str>,
-        "time":                   <str | None>,
-        "duration":               <str | None>,
-        "recording_session_col":  <str>,
-        "filter_columns":         {<str>: list[str], ...}
-    }
-    ```
+
+        {
+            "pixel_x":                <str>,
+            "pixel_y":                <str>,
+            "time":                   <str | None>,
+            "duration":               <str | None>,
+            "recording_session_col":  <str>,
+            "filter_columns":         {<str>: list[str], ...}
+        }
 
     If the user cancels or validation fails, ``self.result`` is ``None``.
+
+    Attributes
+    ----------
+    result : dict | None
+        The mapping returned by the dialog, or None if the user cancelled.
 
     Parameters
     ----------
     parent : tk.Misc | None
         The parent window (can be withdrawn).
-    title : str | None, default "Configure Column Mapping"
-        Window title.
+    title : str | None, optional
+        Window title; if None, the default dialog title is used.
 
     Notes
     -----
-    `simpledialog.Dialog` shows the window immediately during
-    construction; when it closes, just read
-    ``ColumnMappingDialog(...).result`` to obtain the mapping.
+    `simpledialog.Dialog` shows the window immediately during construction;
+    When done, read ``ColumnMappingDialog(...).result`` to get the mapping.
     """
+
     result: dict | None
 
-    def __init__(self, parent: tk.Misc | None, title: str | None = ...):
+    def __init__(self, parent: tk.Misc | None, title: str | None = None):
         super().__init__(parent, title)
         self.pixel_x_entry = None
         self.pixel_y_entry = None
@@ -89,7 +92,8 @@ class ColumnMappingDialog(simpledialog.Dialog):
 
         (
             ttk.Label(
-                master, text='Recording session column; e.g. RECORDING_SESSION_LABEL:',
+                master,
+                text='Recording session column; e.g. RECORDING_SESSION_LABEL:',
             )
             .grid(row=2, column=0, sticky='w', pady=2)
         )
@@ -112,7 +116,8 @@ class ColumnMappingDialog(simpledialog.Dialog):
 
         (
             ttk.Label(
-                master, text='Duration column (optional); e.g. CURRENT_FIX_DURATION:',
+                master,
+                text='Duration column (optional); e.g. CURRENT_FIX_DURATION:',
             )
             .grid(row=5, column=0, sticky='w', pady=2)
         )
@@ -124,7 +129,8 @@ class ColumnMappingDialog(simpledialog.Dialog):
                 master,
                 text=(
                     'Other filters '
-                    "(comma-separated, use '=' for column and '|' for alternatives; "
+                    "(comma-separated, use '=' for column "
+                    "and '|' for alternatives; "
                     'e.g.  trial_date=1998-06-02, '
                     'trial_number=1|2):'
                 ),
@@ -135,48 +141,52 @@ class ColumnMappingDialog(simpledialog.Dialog):
 
         return self.pixel_x_entry
 
-    def apply(self):
-        """Validate entries, build the mapping dict, and store it in self.result."""
-        pixel_x = self.pixel_x_entry.get().strip()
-        pixel_y = self.pixel_y_entry.get().strip()
-        session = self.session_entry.get().strip()
-        page_name = self.page_name_entry.get().strip()
-        time = self.time_entry.get().strip()
-        duration = self.duration_entry.get().strip()
-        raw_filters = self.filters_entry.get().strip()
+    def apply(self) -> None:
+        """Validate inputs and save the mapping to self.result."""
+        pixel_x = cast(ttk.Entry, self.pixel_x_entry).get().strip()
+        pixel_y = cast(ttk.Entry, self.pixel_y_entry).get().strip()
+        session = cast(ttk.Entry, self.session_entry).get().strip()
+        page_name = cast(ttk.Entry, self.page_name_entry).get().strip()
+        time = cast(ttk.Entry, self.time_entry).get().strip()
+        duration = cast(ttk.Entry, self.duration_entry).get().strip()
+        raw_filters = cast(ttk.Entry, self.filters_entry).get().strip()
 
         if not (pixel_x and pixel_y):
             messagebox.showerror(
                 'Error',
                 'X and Y coordinate column names are required.',
             )
-            return None
+            return
 
         if not page_name:
             messagebox.showerror(
                 'Error',
                 'Page name column name is required.',
             )
-            return None
+            return
 
         if not session:
             messagebox.showerror(
                 'Error',
                 'Recording session column name is required.',
             )
-            return None
+            return
 
         if not (time or duration):
             messagebox.showerror(
                 'Error',
-                'You must provide at least a timestamp or a duration column name.',
+                'You must provide a timestamp or a duration column name.',
             )
-            return None
+            return
 
         filters: dict[str, list[str]] = {}
         if raw_filters:
             try:
-                for pair in (p.strip() for p in raw_filters.split(',') if p.strip()):
+                for pair in (
+                        p.strip()
+                        for p in raw_filters.split(',')
+                        if p.strip()
+                ):
                     if '=' not in pair:
                         raise ValueError(
                             f"Missing '=' in filter pair: '{pair}'",
@@ -192,7 +202,7 @@ class ColumnMappingDialog(simpledialog.Dialog):
 
             except ValueError as err:
                 messagebox.showerror('Filter Format Error', str(err))
-                return None
+                return
 
         self.result = {
             'pixel_x': pixel_x,

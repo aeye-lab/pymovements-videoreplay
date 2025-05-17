@@ -13,8 +13,7 @@ from tkinter import ttk
 
 
 class SessionSelectDialog(simpledialog.Dialog):
-    """
-    Dialog for letting the user choose one of the loaded recording sessions.
+    """Dialog for letting the user choose one of the loaded recording sessions.
 
     The dialog shows a list box populated with the available session names.
     The user selects a session and presses **OK** (or double-clicks).
@@ -27,8 +26,8 @@ class SessionSelectDialog(simpledialog.Dialog):
         The (possibly withdrawn) parent window.
     sessions : list[str]
         Names of the recording sessions to display.
-    title : str, default "Select session"
-        Window title.
+    title : str, optional
+        Window title. Defaults to "Select session".
 
     Notes
     -----
@@ -37,14 +36,19 @@ class SessionSelectDialog(simpledialog.Dialog):
     ``SessionSelectDialog(parent, sessions).result`` to obtain the choice.
     """
 
-    def __init__(self, parent: tk.Misc, sessions: list[str], title: str = 'Select session'):
+    def __init__(
+            self,
+            parent: tk.Misc,
+            sessions: list[str],
+            title: str = 'Select session',
+    ):
         self._listbox = None
         self._sessions = sessions
         self.result: str | None = None
         super().__init__(parent, title)
 
     def body(self, master):
-        """Create the list-box UI and return the widget that gets initial focus."""
+        """Create the list-box and return initial focus widget."""
         self.minsize(400, 150)
 
         ttk.Label(master, text='Choose a recording session:').pack(
@@ -64,7 +68,7 @@ class SessionSelectDialog(simpledialog.Dialog):
         return self._listbox
 
     def apply(self):
-        """Save the selected session name in ``self.result`` when OK is pressed."""
+        """Save the selected session name in ``self.result``."""
         selection = self._listbox.curselection()
         if selection:
             self.result = self._sessions[selection[0]]

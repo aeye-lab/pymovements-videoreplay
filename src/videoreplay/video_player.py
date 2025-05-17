@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import os
 import tkinter as tk
+from collections.abc import Iterator
 from pathlib import Path
 
 import cv2
@@ -15,6 +16,8 @@ import pandas as pd
 
 from videoreplay.column_mapping_dialog import ColumnMappingDialog
 from videoreplay.session_select_dialog import SessionSelectDialog
+
+
 # ── standard library ────────────────────────────────────────────────
 # ── third-party libraries ───────────────────────────────────────────
 # ── local package ───────────────────────────────────────────────────
@@ -31,9 +34,19 @@ class VideoPlayer:
         Path to the directory containing the eye-tracking CSV data.
     recording_sessions : list[str]
         List of recording session labels used to filter the dataset.
+
+    Raises
+    ------
+    ValueError
+        If the user cancels the column-mapping dialog.
     """
 
-    def __init__(self, stimulus_path: str, dataset_path: str, recording_sessions: list[str]):
+    def __init__(
+            self,
+            stimulus_path: str,
+            dataset_path: str,
+            recording_sessions: list[str],
+    ):
         self.stimulus_path = stimulus_path
         normalized_stimulus_name = self._normalize_stimulus_name(stimulus_path)
         self.is_image = self._is_image()
@@ -95,19 +108,23 @@ class VideoPlayer:
             )
             base_df.rename(columns=column_mapping, inplace=True)
             base_df['normalized_page_name'] = base_df['page_name'].astype(
-                str).apply(self._normalize_stimulus_name)
+                str,
+            ).apply(self._normalize_stimulus_name)
 
             for session in recording_sessions:
                 filter_conditions = (
                     (base_df['recording_session'] == session) &
-                    (base_df['normalized_page_name']
-                     == normalized_stimulus_name)
+                    (
+                        base_df['normalized_page_name']
+                        == normalized_stimulus_name
+                    )
                 )
 
                 for col, allowed in mapping['filter_columns'].items():
                     if col not in base_df.columns:
                         print(
-                            f"WARNING: Filter column '{col}' not found in data; ignoring filter.",
+                            f"WARNING: Filter column '{col}' not found; "
+                            f"ignoring filter.",
                         )
                         continue
                     filter_conditions &= base_df[col].isin(allowed)
@@ -116,7 +133,8 @@ class VideoPlayer:
 
                 if session_df.empty:
                     print(
-                        f"WARNING: No data for session '{session}' and stimulus '{normalized_stimulus_name}' found",
+                        f"WARNING: No data for session '{session}' "
+                        f"and stimulus '{normalized_stimulus_name}' found",
                     )
                     continue
 
@@ -129,7 +147,8 @@ class VideoPlayer:
                     session_df.sort_values(by='time', inplace=True)
                 else:
                     print(
-                        "ERROR: Neither 'time' nor 'duration' column found after mapping.",
+                        "ERROR: Neither 'time' "
+                        "nor 'duration' column found after mapping.",
                     )
                     continue
 
@@ -156,7 +175,7 @@ class VideoPlayer:
         return self.stimulus_path.lower().endswith(image_extensions)
 
     def _extract_pixel_coordinates(self, pixel_value):
-        """Extract and scale pixel coordinates to fit the stimulus resolution."""
+        """Scale and clip pixel coordinates to fit the stimulus resolution."""
         # Determine stimulus size
         if self.is_image:
             if self.image is None:
@@ -170,7 +189,10 @@ class VideoPlayer:
             capture.release()
 
         # Validate and extract gaze coordinates
-        if isinstance(pixel_value, (list, tuple, np.ndarray)) and len(pixel_value) == 2:
+        if (
+                isinstance(pixel_value, (list, tuple, np.ndarray))
+                and len(pixel_value) == 2
+        ):
             try:
                 # Keep as float before scaling
                 x, y = float(pixel_value[0]), float(pixel_value[1])
@@ -205,13 +227,14 @@ class VideoPlayer:
         capture.release()
 
         print(
-            f"Video loaded successfully! FPS: {fps}, Total Frames: {frame_count}",
+            f"Video loaded! FPS: {fps}, Total Frames: {frame_count}",
         )
 
         required_columns = ['time']
         if not all(col in df.columns for col in required_columns):
             print(
-                f"ERROR: Required columns {required_columns} not found in gaze_df!",
+                f"ERROR: Required columns {required_columns} "
+                f"not found in gaze_df!",
             )
             return
 
@@ -419,7 +442,8 @@ class VideoPlayer:
         Parameters
         ----------
         filename : str
-            Name of the output file without extension. '.mp4' will be added automatically.
+            Name of the output file without extension.
+            '.mp4' will be added automatically.
         speed : float, optional
             Playback speed multiplier. Default is 1.0.
             Use values < 1.0 to slow down or > 1.0 to speed up playback.
@@ -432,7 +456,7 @@ class VideoPlayer:
             self._export_replay_video_stimulus(output_path, speed_adjusted_fps)
 
     def _export_replay_image_stimulus(self, output_path: str, fps: float):
-        """Handle exporting gaze replay for an image stimulus as an MP4 video."""
+        """Handle exporting gaze replay for an image stimulus as MP4 video."""
         print('Exporting gaze replay for an image stimulus...')
 
         height, width = self.image.shape[:2]
@@ -446,7 +470,7 @@ class VideoPlayer:
         print(f"Image-based replay exported as MP4: {output_path}")
 
     def _export_replay_video_stimulus(self, output_path: str, fps: float):
-        """Handle exporting gaze replay for a video stimulus as an MP4 video."""
+        """Handle exporting gaze replay for a video stimulus as MP4 video."""
         print('Exporting gaze replay for a video stimulus...')
 
         capture = cv2.VideoCapture(self.stimulus_path)
@@ -468,7 +492,8 @@ class VideoPlayer:
         out.release()
         print(f"Video-based replay exported as MP4: {output_path}")
 
-    def _overlay_gaze_on_image(self, fps: float):
+    def _overlay_gaze_on_image(self, fps: float) -> Iterator[np.ndarray]:
+        """Yield image frames with gaze overlay at specified FPS."""
         # Tag each fixation with its session
         all_fixations = pd.concat(
             [df for _, df in self.gaze_dfs],
@@ -505,7 +530,8 @@ class VideoPlayer:
             num_frames = int((delta_ms / 1000.0) * fps)
             yield from [frame] * max(1, num_frames)
 
-    def _overlay_gaze_on_video(self, frame, current_frame):
+    def _overlay_gaze_on_video(self, frame, current_frame) -> None:
+        """Overlay gaze points onto the given video frame."""
         i: int
         for i, (_, df) in enumerate(self.gaze_dfs):
             gaze_data = df[df['frame_idx'] == current_frame]
@@ -520,6 +546,7 @@ class VideoPlayer:
             self._draw_legend(frame)
 
     def _draw_legend(self, frame):
+        """Draw session-color legend in the frame's top-left."""
         legend_height = 20 * len(self.gaze_dfs) + 10
         legend_width = 250
         legend = np.ones(
@@ -546,6 +573,7 @@ class VideoPlayer:
         frame[10: 10 + legend.shape[0], 10: 10 + legend.shape[1]] = legend
 
     def _draw_progress(self, frame, current: int, total: int):
+        """Draw current/total badge in the frame's top-left."""
         text = f"{current} / {total}"
 
         (w, h), baseline = cv2.getTextSize(
@@ -555,8 +583,13 @@ class VideoPlayer:
             1,
         )
         pad = 6
-        badge = np.ones((h + baseline + 2 * pad, w + 2 *
-                        pad, 3), dtype=np.uint8) * 255
+        badge = np.ones(
+            (
+                h + baseline + 2 * pad,
+                w + 2 * pad,
+                3,
+            ), dtype=np.uint8,
+        ) * 255
 
         cv2.putText(
             badge,
