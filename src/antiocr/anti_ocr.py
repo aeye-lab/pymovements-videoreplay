@@ -83,7 +83,7 @@ class AntiOCR:
         Parameters
         ----------
         csv_path : str
-            Directory containing the eye-tracking CSV export;
+            Path to the eye-tracking CSV file.
         page_name : str
             Page/stimulus identifier to extract.
         session : str
@@ -117,17 +117,12 @@ class AntiOCR:
             column_mapping[filter_col] = filter_col
 
         try:
-            csv_files = [
-                f for f in Path(csv_path).glob(
-                    '*.csv',
-                ) if 'fixfinal' in f.name
-            ]
+            csv_file = Path(csv_path)
 
-            if not csv_files:
-                print(f"ERROR: No valid CSV file found in {csv_path}!")
+            if not csv_file.is_file():
+                print(f"ERROR: CSV file not found: {csv_path}")
                 return
 
-            csv_file = csv_files[0]
             print(f"Loading gaze data from: {csv_file}")
 
             df = pd.read_csv(
