@@ -210,8 +210,10 @@ class FixationCorrection:
         ] = pd.DataFrame(self.fixation_coordinates)
         self.pandas_dataframe = self.pandas_dataframe[
             ~(
-                (self.pandas_dataframe['x_corrected'] == -
-                 1) & (self.pandas_dataframe['y_corrected'] == -1)
+                (
+                    self.pandas_dataframe['x_corrected'] == -
+                    1
+                ) & (self.pandas_dataframe['y_corrected'] == -1)
             )
         ].copy()
         self.pandas_dataframe.reset_index(drop=True, inplace=True)

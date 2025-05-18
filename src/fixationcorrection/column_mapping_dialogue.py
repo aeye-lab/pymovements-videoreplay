@@ -31,7 +31,6 @@ import tkinter as tk
 from tkinter import messagebox
 from tkinter import simpledialog
 from tkinter import ttk
-from typing import cast
 
 
 class ColumnMappingDialog(simpledialog.Dialog):
@@ -178,11 +177,13 @@ class ColumnMappingDialog(simpledialog.Dialog):
             try:
                 for pair in (p.strip() for p in raw_filters.split(',') if p.strip()):
                     if '=' not in pair:
-                        raise ValueError(f"Missing '=' in filter pair: '{pair}'")
+                        raise ValueError(
+                            f"Missing '=' in filter pair: '{pair}'")
                     col, val = pair.split('=', 1)
                     values = [v.strip() for v in val.split('|') if v.strip()]
                     if not values:
-                        raise ValueError(f"No value specified for column '{col.strip()}'")
+                        raise ValueError(
+                            f"No value specified for column '{col.strip()}'")
             except ValueError as err:
                 messagebox.showerror('Filter Format Error', str(err))
                 return False
@@ -197,7 +198,8 @@ class ColumnMappingDialog(simpledialog.Dialog):
         raw_grouping = self.grouping_entry.get().strip()
         raw_filters = self.filters_entry.get().strip()
 
-        grouping = [v.strip() for v in raw_grouping.split('|')] if raw_grouping else []
+        grouping = [v.strip()
+                    for v in raw_grouping.split('|')] if raw_grouping else []
         grouping.append(image)
 
         filters: dict[str, list[str]] = {}
@@ -214,4 +216,3 @@ class ColumnMappingDialog(simpledialog.Dialog):
             'grouping': grouping,
             'filter_columns': filters,
         }
-
