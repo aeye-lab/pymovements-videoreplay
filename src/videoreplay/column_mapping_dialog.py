@@ -160,8 +160,8 @@ class ColumnMappingDialog(simpledialog.Dialog):
 
         return self.pixel_x_entry
 
-    def apply(self) -> None:
-        """Validate inputs and save the mapping to self.result."""
+    def validate(self) -> bool:
+        """Validate inputs before closing the dialog."""
         pixel_x = cast(ttk.Entry, self.pixel_x_entry).get().strip()
         pixel_y = cast(ttk.Entry, self.pixel_y_entry).get().strip()
         session = cast(ttk.Entry, self.session_entry).get().strip()
@@ -175,30 +175,29 @@ class ColumnMappingDialog(simpledialog.Dialog):
                 'Error',
                 'X and Y coordinate column names are required.',
             )
-            return
+            return False
 
         if not page_name:
             messagebox.showerror(
                 'Error',
                 'Page name column name is required.',
             )
-            return
+            return False
 
         if not session:
             messagebox.showerror(
                 'Error',
                 'Recording session column name is required.',
             )
-            return
+            return False
 
         if not (time or duration):
             messagebox.showerror(
                 'Error',
                 'You must provide a timestamp or a duration column name.',
             )
-            return
+            return False
 
-        filters: dict[str, list[str]] = {}
         if raw_filters:
             try:
                 for pair in (
@@ -217,11 +216,33 @@ class ColumnMappingDialog(simpledialog.Dialog):
                         raise ValueError(
                             f"No value specified for column '{col.strip()}'",
                         )
-                    filters[col.strip()] = values
 
             except ValueError as err:
                 messagebox.showerror('Filter Format Error', str(err))
-                return
+                return False
+
+        return True
+
+    def apply(self) -> None:
+        """Save the mapping to self.result."""
+        pixel_x = cast(ttk.Entry, self.pixel_x_entry).get().strip()
+        pixel_y = cast(ttk.Entry, self.pixel_y_entry).get().strip()
+        session = cast(ttk.Entry, self.session_entry).get().strip()
+        page_name = cast(ttk.Entry, self.page_name_entry).get().strip()
+        time = cast(ttk.Entry, self.time_entry).get().strip()
+        duration = cast(ttk.Entry, self.duration_entry).get().strip()
+        raw_filters = cast(ttk.Entry, self.filters_entry).get().strip()
+
+        filters: dict[str, list[str]] = {}
+        if raw_filters:
+            for pair in (
+                    p.strip()
+                    for p in raw_filters.split(',')
+                    if p.strip()
+            ):
+                col, val = pair.split('=', 1)
+                values = [v.strip() for v in val.split('|') if v.strip()]
+                filters[col.strip()] = values
 
         self.result = {
             'pixel_x': pixel_x,
