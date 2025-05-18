@@ -363,4 +363,4 @@ def run_fixation_correction(csv_file, image_folder):
         combined_dataframe.to_csv(new_path, index=False)
 
 
-#run_fixation_correction('18sat_fixfinal.csv', 'reading screenshot')
+# run_fixation_correction('18sat_fixfinal.csv', 'reading screenshot')
