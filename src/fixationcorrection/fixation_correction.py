@@ -1,15 +1,19 @@
 from __future__ import annotations
 import os
+from pathlib import Path
 import cv2
 import ocr_reader
 import pandas as pd
 from pynput import keyboard
+import column_mapping_dialogue as cmd
+import tkinter as tk
 
 
 class FixationCorrection:
-    def __init__(self, image_path, pandas_dataframe, title=None):
+    def __init__(self, image_path, pandas_dataframe, mapping, title=None):
         self.image_path = image_path
         self.pandas_dataframe = pandas_dataframe
+        self.mapping = mapping
         self.image = cv2.imread(self.image_path)
         self.current_fixation_index = 0  # Index of the current active circle
         self.fixation_coordinates = None  # Fixations for the current image
@@ -26,10 +30,11 @@ class FixationCorrection:
         listener = keyboard.Listener(on_press=self.on_press)
         listener.start()
 
+
     def get_xy_coordinates(self):
         xy_coordinates = list(
             zip(
-                self.pandas_dataframe['CURRENT_FIX_X'], self.pandas_dataframe['CURRENT_FIX_Y'],
+                self.pandas_dataframe[self.mapping['pixel_x']], self.pandas_dataframe[self.mapping['pixel_y']],
             ),
         )
         xy_int_coordinates = [(int(x), int(y)) for x, y in xy_coordinates]
@@ -50,7 +55,6 @@ class FixationCorrection:
                 thickness=1,
             )  # Circle for points
             if i < len(self.fixation_coordinates) :
-                #print(x,y)
                 next_x, next_y = self.fixation_coordinates[self.next_valid_fixation_index((i+1)%len(self.fixation_coordinates))]
                 cv2.line(
                     self.image, (next_x, next_y),
@@ -183,7 +187,6 @@ class FixationCorrection:
             cv2.waitKey(0) & 0xFF  # Get key press
 
             if not self.correction:
-                #self.save_corrected_fixations()
                 cv2.destroyAllWindows()
                 return
 
@@ -193,7 +196,6 @@ class FixationCorrection:
         self.pandas_dataframe[['x_corrected', 'y_corrected']] = pd.DataFrame(self.fixation_coordinates)
         self.pandas_dataframe = self.pandas_dataframe[~((self.pandas_dataframe['x_corrected'] == -1) & (self.pandas_dataframe['y_corrected'] == -1))].copy()
         self.pandas_dataframe.reset_index(drop=True, inplace=True)
-        print(self.pandas_dataframe)
 
     def get_ocr_centers(self):
         reader = ocr_reader.OCR_Reader(self.image_path)
@@ -235,83 +237,92 @@ class FixationCorrection:
 
 
 class DataProcessing:
-    def __init__(self, csv_file, x_column, y_column, image_column, image_folder, groups=None, filters=None):
+    def __init__(self, csv_file, image_folder):
         self.csv_file = csv_file
         self.dataframes = {}
-        self.x_column = x_column
-        self.y_column = y_column
-        self.image_column = image_column
         self.image_folder = image_folder
         self.image_list = os.listdir(self.image_folder)
-        self.groups = groups
-        self.filters = filters
 
-        self.groups.append(self.image_column)
+        root = tk.Tk()
+        root.withdraw()
+        mapping = cmd.ColumnMappingDialog(root, title='Column Mapping').result
+        root.destroy()
 
+        if mapping is None:
+            raise ValueError('Column mapping configuration cancelled by user.')
+
+        self.column_mapping = {
+            'pixel_x': mapping['pixel_x'],
+            'pixel_y': mapping['pixel_y'],
+            'image_column': mapping['image_column'],
+            'grouping': mapping['grouping'],
+            'filter_columns': mapping['filter_columns'],
+        }
 
     def prepare_data(self):
-        raw_data = pd.read_csv(self.csv_file)
+        raw_data = pd.read_csv(self.csv_file,
+                               sep=None,
+                               engine='python',
+                               encoding='utf-8-sig'
+                               )
         # Drop the entries where there is no corresponding image
-        dropped = raw_data[(
-            raw_data[self.image_column] +
-            '.png'
-        ).isin(self.image_list)]
+        clean_list = {self.normalize(p) for p in self.image_list}
+        mask = raw_data[self.column_mapping['image_column']].astype(str).apply(self.normalize).isin(clean_list)
+        dropped = raw_data[mask]
+
         self.dataframes = self.filter_and_group(dropped)
         return self.dataframes
+
+    def normalize(self, name: str) -> str:
+        return Path(name).stem.lower()
 
     def save_data(self, dataframe):
         dataframe.to_csv(self.csv_file, index=False)
 
     def filter_and_group(self, dataframe):
         self.make_title()
-        if self.filters:
-            for col, value in self.filters:
-                if isinstance(value, list):
-                    dataframe = dataframe[dataframe[col].isin(value)]
+        if self.column_mapping['filter_columns'] is not None:
+            for key, val in self.column_mapping['filter_columns'].items():
+                if isinstance(val, list):
+                    dataframe = dataframe[dataframe[key].isin(val)]
                 else:
-                    dataframe = dataframe[dataframe[col] == value]
+                    dataframe = dataframe[dataframe[key] == val]
 
-        if self.groups:
-            grouped = dataframe.groupby(self.groups)
+        if self.column_mapping['grouping'] is not None:
+            grouped = dataframe.groupby(self.column_mapping['grouping'])
             return [group.copy() for _, group in grouped]
         else:
             return [dataframe.copy()]
 
+
     def make_title(self):
         all_filters = []
-        for col, value in self.filters:
+        for value in self.column_mapping['filter_columns'].values():
             all_filters.append(value)
         flattened = [item for sublist in all_filters for item in sublist]
         title = '_'.join(flattened)
         return title
 
-
-
-
-
-
-def run_fixation_correction(csv_file, x_column, y_column, image_column, image_folder, groups=None, filters=None):
+def run_fixation_correction(csv_file, image_folder):
     prepared = DataProcessing(
-        csv_file, x_column, y_column, image_column, image_folder, groups, filters
+        csv_file, image_folder,
     )
     dataframes = prepared.prepare_data()
+    mapping = prepared.column_mapping
 
     corrected_dataframes = []
     cv2.waitKey(0) & 0xFF
 
     for frame in dataframes:
-        image_name = frame[image_column].iloc[0]
+        image_name = frame[mapping['image_column']].iloc[0]
         for image in os.listdir(image_folder):
             if image_name in image:
                 image_path = os.path.join(image_folder, image)
                 fix = FixationCorrection(
-                    image_path, frame, frame[groups[0]].iloc[0],
+                    image_path, frame, mapping, frame[mapping['grouping'][0]].iloc[0],
                 )
                 fix.edit_points()
-                # fix.save_corrected_fixations()
                 corrected_dataframes.append(fix.pandas_dataframe)
-
-
 
     # save the corrected data in a new file
     if corrected_dataframes:
@@ -327,7 +338,5 @@ def run_fixation_correction(csv_file, x_column, y_column, image_column, image_fo
         combined_dataframe.to_csv(new_path, index=False)
 
 
-run_fixation_correction(
-    '18sat_fixfinal.csv', 'CURRENT_FIX_X', 'CURRENT_FIX_Y',
-    'page_name', 'reading screenshot',['RECORDING_SESSION_LABEL'],[('RECORDING_SESSION_LABEL', ['msd001','msd002']), ('page_name', ['reading-dickens-1'])]
-)
+
+run_fixation_correction('18sat_fixfinal.csv','reading screenshot')
