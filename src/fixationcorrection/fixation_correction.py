@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import os
+
 import cv2
 import ocr_reader
 import pandas as pd
@@ -49,9 +51,10 @@ class FixationCorrection:
                 self.image, (x, y), radius=10, color=color,
                 thickness=1,
             )  # Circle for points
-            if i < len(self.fixation_coordinates) :
-                #print(x,y)
-                next_x, next_y = self.fixation_coordinates[self.next_valid_fixation_index((i+1)%len(self.fixation_coordinates))]
+            if i < len(self.fixation_coordinates):
+                # print(x,y)
+                next_x, next_y = self.fixation_coordinates[self.next_valid_fixation_index(
+                    (i+1) % len(self.fixation_coordinates))]
                 cv2.line(
                     self.image, (next_x, next_y),
                     (x, y), color=color, thickness=1,
@@ -63,7 +66,7 @@ class FixationCorrection:
         x, y = self.fixation_coordinates[self.current_fixation_index]
 
         if not self.original_fixation:
-            self.original_fixation = (x,y)
+            self.original_fixation = (x, y)
 
         if self.point_movement_mode == 1:
             if direction == 'up':
@@ -104,9 +107,9 @@ class FixationCorrection:
         x, y = self.fixation_coordinates[self.current_fixation_index]
         self.original_fixation = (x, y)
 
-        self.fixation_coordinates[self.current_fixation_index] = (-1,-1)
-        self.current_fixation_index = self.next_valid_fixation_index(self.current_fixation_index)
-
+        self.fixation_coordinates[self.current_fixation_index] = (-1, -1)
+        self.current_fixation_index = self.next_valid_fixation_index(
+            self.current_fixation_index)
 
     def undo_last_correction(self):
         self.fixation_coordinates[self.current_fixation_index] = self.original_fixation
@@ -120,15 +123,18 @@ class FixationCorrection:
             elif key == keyboard.Key.left:
                 self.current_fixation_index -= 1
                 self.original_fixation = None
-                self.current_fixation_index = self.previous_valid_fixation_index(self.current_fixation_index)
+                self.current_fixation_index = self.previous_valid_fixation_index(
+                    self.current_fixation_index)
                 if self.current_fixation_index < 0:
-                    self.current_fixation_index = len(self.fixation_coordinates) - 1
+                    self.current_fixation_index = len(
+                        self.fixation_coordinates) - 1
             elif key == keyboard.Key.right:
                 self.current_fixation_index += 1
                 self.original_fixation = None
-                self.current_fixation_index = self.next_valid_fixation_index(self.current_fixation_index)
+                self.current_fixation_index = self.next_valid_fixation_index(
+                    self.current_fixation_index)
                 if self.current_fixation_index >= len(self.fixation_coordinates):
-                   self.current_fixation_index = 0  # Loop back to the first point
+                    self.current_fixation_index = 0  # Loop back to the first point
 
             elif key.char == 'q':
                 self.move_point('left')
@@ -155,17 +161,15 @@ class FixationCorrection:
         return index
 
     def is_invalid_fixation(self, fixation):
-        if fixation == (-1,-1):
+        if fixation == (-1, -1):
             return True
         return False
-
 
     def previous_valid_fixation_index(self, index):
         n = len(self.fixation_coordinates)
         while self.is_invalid_fixation(self.fixation_coordinates[index]):
             index = (index - 1) % n
         return index
-
 
     def edit_points(self):
         while self.current_fixation_index < len(self.fixation_coordinates):
@@ -175,23 +179,27 @@ class FixationCorrection:
             # Display the image with the overlaid points
             cv2.imshow(f'Page {self.image_path}', image_with_points)
             cv2.setWindowTitle(
-                f'Page {self.image_path}', self.image_path[:-
-                                                           4] + ' ' + self.title,
+                f'Page {self.image_path}', self.image_path[
+                    :-
+                    4
+                ] + ' ' + self.title,
             )
 
             # Wait for a key press to move or select next point
             cv2.waitKey(0) & 0xFF  # Get key press
 
             if not self.correction:
-                #self.save_corrected_fixations()
+                # self.save_corrected_fixations()
                 cv2.destroyAllWindows()
                 return
 
         cv2.destroyAllWindows()
 
     def save_corrected_fixations(self):
-        self.pandas_dataframe[['x_corrected', 'y_corrected']] = pd.DataFrame(self.fixation_coordinates)
-        self.pandas_dataframe = self.pandas_dataframe[~((self.pandas_dataframe['x_corrected'] == -1) & (self.pandas_dataframe['y_corrected'] == -1))].copy()
+        self.pandas_dataframe[['x_corrected', 'y_corrected']
+                              ] = pd.DataFrame(self.fixation_coordinates)
+        self.pandas_dataframe = self.pandas_dataframe[~(
+            (self.pandas_dataframe['x_corrected'] == -1) & (self.pandas_dataframe['y_corrected'] == -1))].copy()
         self.pandas_dataframe.reset_index(drop=True, inplace=True)
         print(self.pandas_dataframe)
 
@@ -221,10 +229,14 @@ class FixationCorrection:
         box_bottom_right = (360, 60)
 
         # Draw the box
-        cv2.rectangle(self.image, box_top_left, box_bottom_right,
-                      (200, 200, 200), -1)  # Grey background
-        cv2.rectangle(self.image, box_top_left, box_bottom_right,
-                      (0, 0, 0), 1)  # Black border
+        cv2.rectangle(
+            self.image, box_top_left, box_bottom_right,
+            (200, 200, 200), -1,
+        )  # Grey background
+        cv2.rectangle(
+            self.image, box_top_left, box_bottom_right,
+            (0, 0, 0), 1,
+        )  # Black border
 
         # Add text
         cv2.putText(
@@ -247,7 +259,6 @@ class DataProcessing:
         self.filters = filters
 
         self.groups.append(self.image_column)
-
 
     def prepare_data(self):
         raw_data = pd.read_csv(self.csv_file)
@@ -286,13 +297,9 @@ class DataProcessing:
         return title
 
 
-
-
-
-
 def run_fixation_correction(csv_file, x_column, y_column, image_column, image_folder, groups=None, filters=None):
     prepared = DataProcessing(
-        csv_file, x_column, y_column, image_column, image_folder, groups, filters
+        csv_file, x_column, y_column, image_column, image_folder, groups, filters,
     )
     dataframes = prepared.prepare_data()
 
@@ -311,23 +318,22 @@ def run_fixation_correction(csv_file, x_column, y_column, image_column, image_fo
                 # fix.save_corrected_fixations()
                 corrected_dataframes.append(fix.pandas_dataframe)
 
-
-
     # save the corrected data in a new file
     if corrected_dataframes:
         new_folder_name = 'corrected_fixations'
-        combined_dataframe = pd.concat(corrected_dataframes,ignore_index=True)
+        combined_dataframe = pd.concat(corrected_dataframes, ignore_index=True)
         directory = os.path.dirname(csv_file)
         os.makedirs(os.path.join(directory, new_folder_name), exist_ok=True)
         filename = os.path.basename(csv_file)
         name, ext = os.path.splitext(filename)
         title = prepared.make_title()
         new_filename = f"{name}_fixation_corrected_{title}{ext}"
-        new_path = os.path.join(directory,new_folder_name, new_filename)
+        new_path = os.path.join(directory, new_folder_name, new_filename)
         combined_dataframe.to_csv(new_path, index=False)
 
 
 run_fixation_correction(
     '18sat_fixfinal.csv', 'CURRENT_FIX_X', 'CURRENT_FIX_Y',
-    'page_name', 'reading screenshot',['RECORDING_SESSION_LABEL'],[('RECORDING_SESSION_LABEL', ['msd001','msd002']), ('page_name', ['reading-dickens-1'])]
+    'page_name', 'reading screenshot', ['RECORDING_SESSION_LABEL'], [
+        ('RECORDING_SESSION_LABEL', ['msd001', 'msd002']), ('page_name', ['reading-dickens-1'])],
 )
