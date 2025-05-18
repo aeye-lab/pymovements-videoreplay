@@ -33,8 +33,9 @@ class FixationCorrection:
     def get_xy_coordinates(self):
         xy_coordinates = list(
             zip(
-                self.pandas_dataframe[self.mapping['pixel_x']
-                                      ], self.pandas_dataframe[self.mapping['pixel_y']],
+                self.pandas_dataframe[
+                    self.mapping['pixel_x']
+                ], self.pandas_dataframe[self.mapping['pixel_y']],
             ),
         )
         xy_int_coordinates = [(int(x), int(y)) for x, y in xy_coordinates]
@@ -55,8 +56,11 @@ class FixationCorrection:
                 thickness=1,
             )  # Circle for points
             if i < len(self.fixation_coordinates):
-                next_x, next_y = self.fixation_coordinates[self.next_valid_fixation_index(
-                    (i+1) % len(self.fixation_coordinates))]
+                next_x, next_y = self.fixation_coordinates[
+                    self.next_valid_fixation_index(
+                        (i+1) % len(self.fixation_coordinates),
+                    )
+                ]
                 cv2.line(
                     self.image, (next_x, next_y),
                     (x, y), color=color, thickness=1,
@@ -111,7 +115,8 @@ class FixationCorrection:
 
         self.fixation_coordinates[self.current_fixation_index] = (-1, -1)
         self.current_fixation_index = self.next_valid_fixation_index(
-            self.current_fixation_index)
+            self.current_fixation_index,
+        )
 
     def undo_last_correction(self):
         self.fixation_coordinates[self.current_fixation_index] = self.original_fixation
@@ -126,15 +131,18 @@ class FixationCorrection:
                 self.current_fixation_index -= 1
                 self.original_fixation = None
                 self.current_fixation_index = self.previous_valid_fixation_index(
-                    self.current_fixation_index)
+                    self.current_fixation_index,
+                )
                 if self.current_fixation_index < 0:
                     self.current_fixation_index = len(
-                        self.fixation_coordinates) - 1
+                        self.fixation_coordinates,
+                    ) - 1
             elif key == keyboard.Key.right:
                 self.current_fixation_index += 1
                 self.original_fixation = None
                 self.current_fixation_index = self.next_valid_fixation_index(
-                    self.current_fixation_index)
+                    self.current_fixation_index,
+                )
                 if self.current_fixation_index >= len(self.fixation_coordinates):
                     self.current_fixation_index = 0  # Loop back to the first point
 
@@ -197,10 +205,15 @@ class FixationCorrection:
         cv2.destroyAllWindows()
 
     def save_corrected_fixations(self):
-        self.pandas_dataframe[['x_corrected', 'y_corrected']
-                              ] = pd.DataFrame(self.fixation_coordinates)
-        self.pandas_dataframe = self.pandas_dataframe[~(
-            (self.pandas_dataframe['x_corrected'] == -1) & (self.pandas_dataframe['y_corrected'] == -1))].copy()
+        self.pandas_dataframe[
+            ['x_corrected', 'y_corrected']
+        ] = pd.DataFrame(self.fixation_coordinates)
+        self.pandas_dataframe = self.pandas_dataframe[
+            ~(
+                (self.pandas_dataframe['x_corrected'] == -
+                 1) & (self.pandas_dataframe['y_corrected'] == -1)
+            )
+        ].copy()
         self.pandas_dataframe.reset_index(drop=True, inplace=True)
 
     def get_ocr_centers(self):
@@ -279,7 +292,8 @@ class DataProcessing:
         # Drop the entries where there is no corresponding image
         clean_list = {self.normalize(p) for p in self.image_list}
         mask = raw_data[self.column_mapping['image_column']].astype(
-            str).apply(self.normalize).isin(clean_list)
+            str,
+        ).apply(self.normalize).isin(clean_list)
         dropped = raw_data[mask]
 
         self.dataframes = self.filter_and_group(dropped)
