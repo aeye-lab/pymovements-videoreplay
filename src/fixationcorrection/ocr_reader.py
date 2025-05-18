@@ -21,7 +21,7 @@ def find_closest_top_box(px, py, list_of_centers):
             closest_distance = np.hypot(px-cx, py-cy)
             closest_top_box = center
     if closest_distance == float('inf'):
-        closest_top_box = (px,py)
+        closest_top_box = (px, py)
     return closest_top_box
 
 
@@ -47,7 +47,7 @@ def find_closest_bottom_box(px, py, list_of_centers):
             closest_distance = np.hypot(px-cx, py-cy)
             closest_bottom_box = center
     if closest_distance == float('inf'):
-        closest_bottom_box = (px,py)
+        closest_bottom_box = (px, py)
     return closest_bottom_box
 
 
@@ -60,7 +60,7 @@ def find_closest_right_box(px, py, list_of_centers):
             closest_distance = np.hypot(px-cx, py-cy)
             closest_right_box = center
     if closest_distance == float('inf'):
-        closest_right_box = (px,py)
+        closest_right_box = (px, py)
     return closest_right_box
 
 
@@ -101,7 +101,8 @@ class OCR_Reader:
                 )
 
                 img = cv2.rectangle(
-                    img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                    img, (x, y), (x + w, y + h), (0, 255, 0), 2,
+                )
 
         cv2.imshow('image', img)
         cv2.waitKey(0)
