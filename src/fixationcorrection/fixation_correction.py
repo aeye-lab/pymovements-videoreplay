@@ -18,8 +18,6 @@ class FixationCorrection:
         self.current_fixation_index = 0  # Index of the current active circle
         self.fixation_coordinates = None  # Fixations for the current image
         self.title = title
-        self.last_deleted_fixation = None
-        self.row_to_be_deleted = None
         self.get_xy_coordinates()
         self.point_movement_mode = 1
         self.ocr_centers = None
@@ -275,9 +273,6 @@ class DataProcessing:
 
     def normalize(self, name: str) -> str:
         return Path(name).stem.lower()
-
-    def save_data(self, dataframe):
-        dataframe.to_csv(self.csv_file, index=False)
 
     def filter_and_group(self, dataframe):
         self.make_title()
