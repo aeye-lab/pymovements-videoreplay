@@ -143,61 +143,69 @@ class ColumnMappingDialog(simpledialog.Dialog):
 
         return self.pixel_x_entry
 
-    def apply(self) -> None:
-        """Validate inputs and save the mapping to self.result."""
-        pixel_x = cast(ttk.Entry, self.pixel_x_entry).get().strip()
-        pixel_y = cast(ttk.Entry, self.pixel_y_entry).get().strip()
-        image = cast(ttk.Entry, self.image_column_entry).get().strip()
-        raw_grouping = cast(ttk.Entry, self.grouping_entry).get().strip()
-        raw_filters = cast(ttk.Entry, self.filters_entry).get().strip()
+    def validate(self) -> bool:
+        """Validate inputs before closing the dialog."""
+        pixel_x = self.pixel_x_entry.get().strip()
+        pixel_y = self.pixel_y_entry.get().strip()
+        image = self.image_column_entry.get().strip()
+        raw_grouping = self.grouping_entry.get().strip()
+        raw_filters = self.filters_entry.get().strip()
 
         if not (pixel_x and pixel_y):
             messagebox.showerror(
                 'Error',
                 'X and Y coordinate column names are required.',
             )
-            return
+            return False
 
         if not image:
             messagebox.showerror(
                 'Error',
                 'Image column name is required.',
             )
-            return
+            return False
 
-        grouping: list[str] = []
+        # Check grouping format
         if raw_grouping:
             try:
-                grouping = [v.strip() for v in raw_grouping.split('|')]
-            except ValueError as err:
+                [v.strip() for v in raw_grouping.split('|')]
+            except Exception as err:
                 messagebox.showerror('Grouping Format Error', str(err))
-                return
+                return False
+
+        # Check filter format
+        if raw_filters:
+            try:
+                for pair in (p.strip() for p in raw_filters.split(',') if p.strip()):
+                    if '=' not in pair:
+                        raise ValueError(f"Missing '=' in filter pair: '{pair}'")
+                    col, val = pair.split('=', 1)
+                    values = [v.strip() for v in val.split('|') if v.strip()]
+                    if not values:
+                        raise ValueError(f"No value specified for column '{col.strip()}'")
+            except ValueError as err:
+                messagebox.showerror('Filter Format Error', str(err))
+                return False
+
+        return True
+
+    def apply(self) -> None:
+        """Save the mapping to self.result (assumes validation already passed)."""
+        pixel_x = self.pixel_x_entry.get().strip()
+        pixel_y = self.pixel_y_entry.get().strip()
+        image = self.image_column_entry.get().strip()
+        raw_grouping = self.grouping_entry.get().strip()
+        raw_filters = self.filters_entry.get().strip()
+
+        grouping = [v.strip() for v in raw_grouping.split('|')] if raw_grouping else []
         grouping.append(image)
 
         filters: dict[str, list[str]] = {}
         if raw_filters:
-            try:
-                for pair in (
-                        p.strip()
-                        for p in raw_filters.split(',')
-                        if p.strip()
-                ):
-                    if '=' not in pair:
-                        raise ValueError(
-                            f"Missing '=' in filter pair: '{pair}'",
-                        )
-                    col, val = pair.split('=', 1)
-                    values = [v.strip() for v in val.split('|') if v.strip()]
-
-                    if not values:
-                        raise ValueError(
-                            f"No value specified for column '{col.strip()}'",
-                        )
-                    filters[col.strip()] = values
-
-            except ValueError as err:
-                messagebox.showerror('Filter Format Error', str(err))
-                return
+            for pair in (p.strip() for p in raw_filters.split(',') if p.strip()):
+                col, val = pair.split('=', 1)
+                values = [v.strip() for v in val.split('|') if v.strip()]
+                filters[col.strip()] = values
 
         self.result = {
             'pixel_x': pixel_x,
@@ -206,3 +214,4 @@ class ColumnMappingDialog(simpledialog.Dialog):
             'grouping': grouping,
             'filter_columns': filters,
         }
+
