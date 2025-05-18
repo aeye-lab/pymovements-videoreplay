@@ -116,16 +116,15 @@ class ColumnMappingDialog(simpledialog.Dialog):
         self.image_column_entry = ttk.Entry(master, width=30)
         self.image_column_entry.grid(row=2, column=1, pady=2)
 
-
-
         (
-            ttk.Label(master, text=(
-                'Grouping parameters (optional) (Comma-separated); e.g. RECORDING_SESSION_LABEL, trial_number:'),
-                      ).grid(row=4, column=0, sticky='w', pady=2)
+            ttk.Label(
+                master, text=(
+                    'Grouping parameters (optional) (Comma-separated); e.g. RECORDING_SESSION_LABEL, trial_number:'
+                ),
+            ).grid(row=4, column=0, sticky='w', pady=2)
         )
         self.grouping_entry = ttk.Entry(master, width=30)
         self.grouping_entry.grid(row=4, column=1, pady=2)
-
 
         (
             ttk.Label(
@@ -207,5 +206,3 @@ class ColumnMappingDialog(simpledialog.Dialog):
             'grouping': grouping,
             'filter_columns': filters,
         }
-
-
