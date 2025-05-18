@@ -40,6 +40,8 @@ class FixationCorrection:
         self.image = cv2.imread(self.image_path)
 
         for i, (x, y) in enumerate(self.fixation_coordinates):
+            if (x, y) == (-1, -1):
+                continue
             color = (0, 165, 255) if i == self.current_fixation_index else (
                 (128, 0, 128)
             )
@@ -47,8 +49,9 @@ class FixationCorrection:
                 self.image, (x, y), radius=10, color=color,
                 thickness=1,
             )  # Circle for points
-            if i < len(self.fixation_coordinates) - 1:
-                next_x, next_y = self.fixation_coordinates[i + 1]
+            if i < len(self.fixation_coordinates) :
+                #print(x,y)
+                next_x, next_y = self.fixation_coordinates[self.next_valid_fixation_index((i+1)%len(self.fixation_coordinates))]
                 cv2.line(
                     self.image, (next_x, next_y),
                     (x, y), color=color, thickness=1,
@@ -98,21 +101,12 @@ class FixationCorrection:
                 )
 
     def delete_fixation(self):
-        self.last_deleted_fixation = self.fixation_coordinates[self.current_fixation_index]
-        self.fixation_coordinates.pop(self.current_fixation_index)
-        if self.row_to_be_deleted is not None:
-            self.pandas_dataframe = self.pandas_dataframe.drop(
-                self.pandas_dataframe.index[self.row_to_be_deleted],
-            )
-        self.row_to_be_deleted = self.current_fixation_index
+        x, y = self.fixation_coordinates[self.current_fixation_index]
+        self.original_fixation = (x, y)
 
-    def undo_last_deletion(self):
-        if self.last_deleted_fixation is not None:
-            self.fixation_coordinates.insert(
-                self.current_fixation_index, self.last_deleted_fixation,
-            )
-            self.last_deleted_fixation = None
-            self.row_to_be_deleted = None
+        self.fixation_coordinates[self.current_fixation_index] = (-1,-1)
+        self.current_fixation_index = self.next_valid_fixation_index(self.current_fixation_index)
+
 
     def undo_last_correction(self):
         self.fixation_coordinates[self.current_fixation_index] = self.original_fixation
@@ -126,33 +120,52 @@ class FixationCorrection:
             elif key == keyboard.Key.left:
                 self.current_fixation_index -= 1
                 self.original_fixation = None
+                self.current_fixation_index = self.previous_valid_fixation_index(self.current_fixation_index)
+                if self.current_fixation_index < 0:
+                    self.current_fixation_index = len(self.fixation_coordinates) - 1
             elif key == keyboard.Key.right:
                 self.current_fixation_index += 1
                 self.original_fixation = None
+                self.current_fixation_index = self.next_valid_fixation_index(self.current_fixation_index)
                 if self.current_fixation_index >= len(self.fixation_coordinates):
-                    self.current_fixation_index = 0  # Loop back to the first point
+                   self.current_fixation_index = 0  # Loop back to the first point
+
             elif key.char == 'q':
                 self.move_point('left')
             elif key.char == 'r':
                 self.move_point('right')
             elif key.char == 'l':
                 self.delete_fixation()
-            elif key.char == 'u':
-                self.undo_last_deletion()
             elif key.char == 'z':
                 self.undo_last_correction()
             elif key.char == 'm':
                 self.switch_point_movement_mode()
             elif key.char == 'n':
-                if self.row_to_be_deleted is not None:
-                    self.pandas_dataframe = self.pandas_dataframe.drop(
-                        self.pandas_dataframe.index[self.row_to_be_deleted],
-                    )
                 self.save_corrected_fixations()
                 self.correction = False
 
         except AttributeError:
             pass
+
+    def next_valid_fixation_index(self, index):
+        n = len(self.fixation_coordinates)
+        while self.is_invalid_fixation(self.fixation_coordinates[index]):
+            index = (index + 1) % n
+
+        return index
+
+    def is_invalid_fixation(self, fixation):
+        if fixation == (-1,-1):
+            return True
+        return False
+
+
+    def previous_valid_fixation_index(self, index):
+        n = len(self.fixation_coordinates)
+        while self.is_invalid_fixation(self.fixation_coordinates[index]):
+            index = (index - 1) % n
+        return index
+
 
     def edit_points(self):
         while self.current_fixation_index < len(self.fixation_coordinates):
@@ -178,6 +191,9 @@ class FixationCorrection:
 
     def save_corrected_fixations(self):
         self.pandas_dataframe[['x_corrected', 'y_corrected']] = pd.DataFrame(self.fixation_coordinates)
+        self.pandas_dataframe = self.pandas_dataframe[~((self.pandas_dataframe['x_corrected'] == -1) & (self.pandas_dataframe['y_corrected'] == -1))].copy()
+        self.pandas_dataframe.reset_index(drop=True, inplace=True)
+        print(self.pandas_dataframe)
 
     def get_ocr_centers(self):
         reader = ocr_reader.OCR_Reader(self.image_path)
@@ -313,5 +329,5 @@ def run_fixation_correction(csv_file, x_column, y_column, image_column, image_fo
 
 run_fixation_correction(
     '18sat_fixfinal.csv', 'CURRENT_FIX_X', 'CURRENT_FIX_Y',
-    'page_name', 'reading screenshot',['RECORDING_SESSION_LABEL'],[('RECORDING_SESSION_LABEL', ['msd002','msd001']), ('page_name', ['reading-dickens-1'])]
+    'page_name', 'reading screenshot',['RECORDING_SESSION_LABEL'],[('RECORDING_SESSION_LABEL', ['msd001','msd002']), ('page_name', ['reading-dickens-1'])]
 )
