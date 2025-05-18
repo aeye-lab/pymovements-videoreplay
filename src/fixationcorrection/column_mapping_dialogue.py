@@ -17,7 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Dialog for mapping CSV columns used by `VideoPlayer`.
+"""Dialog for mapping CSV columns used by `FixationCorrection`.
 
 `ColumnMappingDialog` is a simple Tkinter dialog that lets the user pick
 the CSV columns for X/Y gaze coordinates, timestamps (or durations),
@@ -34,14 +34,13 @@ from tkinter import ttk
 
 
 class ColumnMappingDialog(simpledialog.Dialog):
-    """Dialog for defining how CSV columns map to `VideoPlayer` fields.
+    """Dialog for defining how CSV columns map to `FixationCorrection` fields.
 
     The user is asked to enter
 
     * X- and Y-coordinate column names (required)
-    * either a timestamp column **or** a duration column (at least one
-      required)
-    * the column that identifies a recording session (required)
+    * the column that identifies the corresponding image (required)
+    * optional column names to group the fixations by
     * optional extra filters in the form
       ``col=value1|value2, other_col=foo``
 
@@ -133,7 +132,7 @@ class ColumnMappingDialog(simpledialog.Dialog):
                     "(comma-separated, use '=' for column "
                     "and '|' for alternatives; "
                     'e.g.  RECORDING_SESSION_LABEL=msd002|msd003, '
-                    'page_name=recording-dickens-1):'
+                    'page_name=reading-dickens-1):'
                 ),
             ).grid(row=6, column=0, columnspan=2, sticky='w', pady=2)
         )
