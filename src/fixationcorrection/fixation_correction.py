@@ -28,7 +28,7 @@ from __future__ import annotations
 import os
 import tkinter as tk
 from pathlib import Path
-from pynput import keyboard
+
 import cv2
 import pandas as pd
 import src.fixationcorrection.column_mapping_dialogue as cmd
