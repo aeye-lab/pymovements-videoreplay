@@ -29,11 +29,13 @@ import os
 import tkinter as tk
 from pathlib import Path
 
-import column_mapping_dialogue as cmd
 import cv2
-import ocr_reader
 import pandas as pd
 from pynput import keyboard
+
+import src.fixationcorrection.column_mapping_dialogue as cmd
+import src.fixationcorrection.ocr_reader as ocr
+
 
 
 class FixationCorrection:
@@ -145,22 +147,22 @@ class FixationCorrection:
         elif self.point_movement_mode == 0:
             if direction == 'up':
                 self.fixation_coordinates[self.current_fixation_index] \
-                    = ocr_reader.find_closest_top_box(
+                    = ocr.find_closest_top_box(
                     x, y, self.ocr_centers,
                 )
             elif direction == 'down':
                 self.fixation_coordinates[self.current_fixation_index] \
-                    = ocr_reader.find_closest_bottom_box(
+                    = ocr.find_closest_bottom_box(
                     x, y, self.ocr_centers,
                 )
             elif direction == 'left':
                 self.fixation_coordinates[self.current_fixation_index] \
-                    = ocr_reader.find_closest_left_box(
+                    = ocr.find_closest_left_box(
                     x, y, self.ocr_centers,
                 )
             elif direction == 'right':
                 self.fixation_coordinates[self.current_fixation_index] \
-                    = ocr_reader.find_closest_right_box(
+                    = ocr.find_closest_right_box(
                     x, y, self.ocr_centers,
                 )
 
@@ -300,7 +302,7 @@ class FixationCorrection:
 
     def get_ocr_centers(self):
         """Initialize OCR reader and get center coordinates."""
-        reader = ocr_reader.OCR_Reader(self.image_path)
+        reader = ocr.OCR_Reader(self.image_path)
         reader.get_list_of_centers()
         self.ocr_centers = reader.list_of_centers
 
