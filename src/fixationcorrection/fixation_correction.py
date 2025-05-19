@@ -31,11 +31,9 @@ from pathlib import Path
 
 import cv2
 import pandas as pd
-from pynput import keyboard
-
 import src.fixationcorrection.column_mapping_dialogue as cmd
 import src.fixationcorrection.ocr_reader as ocr
-
+from pynput import keyboard
 
 
 class FixationCorrection:
