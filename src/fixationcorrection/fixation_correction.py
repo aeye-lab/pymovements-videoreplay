@@ -1,3 +1,28 @@
+# Copyright (c) 2025 The pymovements Project Authors
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+"""Correct recording artefacts in the fixations of eye-tracking data.
+
+This module provides the `FixationCorrection` class
+to manually correct fixations
+and save the corrected data in a new file
+"""
 from __future__ import annotations
 
 import os
@@ -12,7 +37,24 @@ from pynput import keyboard
 
 
 class FixationCorrection:
-    def __init__(self, image_path, pandas_dataframe, mapping, title=None):
+    """A class to manually correct fixation points on an image.
+
+    Parameters
+    ----------
+    image_path : str
+        Path to the image file.
+    pandas_dataframe : pd.DataFrame
+        A DataFrame containing fixation data.
+    mapping : dict[str, str]
+        Dictionary mapping image names or IDs to fixation data.
+    title : str | None, optional
+        Title for the visualization window.
+    """
+
+    def __init__(
+        self, image_path: str, pandas_dataframe: pd.DataFrame,
+        mapping: dict[str, str], title: str | None = None,
+    ):
         self.image_path = image_path
         self.pandas_dataframe = pandas_dataframe
         self.mapping = mapping
@@ -31,6 +73,7 @@ class FixationCorrection:
         listener.start()
 
     def get_xy_coordinates(self):
+        """Extract (x, y) pixel coordinates from the DataFrame."""
         xy_coordinates = list(
             zip(
                 self.pandas_dataframe[
@@ -42,7 +85,10 @@ class FixationCorrection:
         self.fixation_coordinates = xy_int_coordinates
 
     def draw_points_on_image(self):
-        # Draw all points on the image
+        """Draw fixation points and connecting lines on the image.
+
+        Highlight the current fixation in orange; others are purple
+        """
         self.image = cv2.imread(self.image_path)
 
         for i, (x, y) in enumerate(self.fixation_coordinates):
@@ -68,7 +114,12 @@ class FixationCorrection:
         return self.image
 
     def move_point(self, direction):
-        # Move the current active point in the specified direction
+        """Move the current fixation point.
+
+        Either by one pixel (Pixel mode)
+        or to the closest text bounding box (AOI mode)
+        in the specified direction.
+        """
         x, y = self.fixation_coordinates[self.current_fixation_index]
 
         if not self.original_fixation:
@@ -93,23 +144,31 @@ class FixationCorrection:
                 )  # Move right (increase x)
         elif self.point_movement_mode == 0:
             if direction == 'up':
-                self.fixation_coordinates[self.current_fixation_index] = ocr_reader.find_closest_top_box(
+                self.fixation_coordinates[self.current_fixation_index] \
+                    = ocr_reader.find_closest_top_box(
                     x, y, self.ocr_centers,
                 )
             elif direction == 'down':
-                self.fixation_coordinates[self.current_fixation_index] = ocr_reader.find_closest_bottom_box(
+                self.fixation_coordinates[self.current_fixation_index] \
+                    = ocr_reader.find_closest_bottom_box(
                     x, y, self.ocr_centers,
                 )
             elif direction == 'left':
-                self.fixation_coordinates[self.current_fixation_index] = ocr_reader.find_closest_left_box(
+                self.fixation_coordinates[self.current_fixation_index] \
+                    = ocr_reader.find_closest_left_box(
                     x, y, self.ocr_centers,
                 )
             elif direction == 'right':
-                self.fixation_coordinates[self.current_fixation_index] = ocr_reader.find_closest_right_box(
+                self.fixation_coordinates[self.current_fixation_index] \
+                    = ocr_reader.find_closest_right_box(
                     x, y, self.ocr_centers,
                 )
 
     def delete_fixation(self):
+        """Mark the current fixation as deleted.
+
+        Set coordinates to (-1, -1).
+        """
         x, y = self.fixation_coordinates[self.current_fixation_index]
         self.original_fixation = (x, y)
 
@@ -119,9 +178,12 @@ class FixationCorrection:
         )
 
     def undo_last_correction(self):
-        self.fixation_coordinates[self.current_fixation_index] = self.original_fixation
+        """Restores the original position of the current fixation."""
+        self.fixation_coordinates[self.current_fixation_index] \
+            = self.original_fixation
 
     def on_press(self, key):
+        """Handle key press events."""
         try:
             if key == keyboard.Key.up:
                 self.move_point('up')
@@ -130,8 +192,10 @@ class FixationCorrection:
             elif key == keyboard.Key.left:
                 self.current_fixation_index -= 1
                 self.original_fixation = None
-                self.current_fixation_index = self.previous_valid_fixation_index(
-                    self.current_fixation_index,
+                self.current_fixation_index = (
+                    self.previous_valid_fixation_index(
+                        self.current_fixation_index,
+                    )
                 )
                 if self.current_fixation_index < 0:
                     self.current_fixation_index = len(
@@ -143,8 +207,12 @@ class FixationCorrection:
                 self.current_fixation_index = self.next_valid_fixation_index(
                     self.current_fixation_index,
                 )
-                if self.current_fixation_index >= len(self.fixation_coordinates):
-                    self.current_fixation_index = 0  # Loop back to the first point
+                # Loop back to the first point
+                if (
+                    self.current_fixation_index >=
+                    len(self.fixation_coordinates)
+                ):
+                    self.current_fixation_index = 0
 
             elif key.char == 'q':
                 self.move_point('left')
@@ -164,6 +232,7 @@ class FixationCorrection:
             pass
 
     def next_valid_fixation_index(self, index):
+        """Find the next valid fixation of a given index."""
         n = len(self.fixation_coordinates)
         while self.is_invalid_fixation(self.fixation_coordinates[index]):
             index = (index + 1) % n
@@ -171,17 +240,24 @@ class FixationCorrection:
         return index
 
     def is_invalid_fixation(self, fixation):
+        """Check if a fixation has been deleted (i.e., set to (-1, -1))."""
         if fixation == (-1, -1):
             return True
         return False
 
     def previous_valid_fixation_index(self, index):
+        """Find the previous valid fixation of a given index."""
         n = len(self.fixation_coordinates)
         while self.is_invalid_fixation(self.fixation_coordinates[index]):
             index = (index - 1) % n
         return index
 
     def edit_points(self):
+        """Launch the OpenCV image window.
+
+        Enter a loop to allow user interaction for fixation correction.
+        Close when user exits or completes correction.
+        """
         while self.current_fixation_index < len(self.fixation_coordinates):
             # Draw the points on the image
             image_with_points = self.draw_points_on_image()
@@ -195,8 +271,7 @@ class FixationCorrection:
                 ] + ' ' + self.title,
             )
 
-            # Wait for a key press to move or select next point
-            cv2.waitKey(0) & 0xFF  # Get key press
+            cv2.waitKey(0)
 
             if not self.correction:
                 cv2.destroyAllWindows()
@@ -205,6 +280,11 @@ class FixationCorrection:
         cv2.destroyAllWindows()
 
     def save_corrected_fixations(self):
+        """Save corrected fixation coordinates.
+
+        Create new DataFrame columns, remove deleted fixations,
+        and reset index.
+        """
         self.pandas_dataframe[
             ['x_corrected', 'y_corrected']
         ] = pd.DataFrame(self.fixation_coordinates)
@@ -219,11 +299,13 @@ class FixationCorrection:
         self.pandas_dataframe.reset_index(drop=True, inplace=True)
 
     def get_ocr_centers(self):
+        """Initialize OCR reader and get center coordinates."""
         reader = ocr_reader.OCR_Reader(self.image_path)
         reader.get_list_of_centers()
         self.ocr_centers = reader.list_of_centers
 
     def switch_point_movement_mode(self):
+        """Toggle between Pixel- and AOI-based movement."""
         if self.point_movement_mode == 1:
             try:
                 self.point_movement_mode = 0
@@ -233,6 +315,7 @@ class FixationCorrection:
             self.point_movement_mode = 1
 
     def display_point_movement_mode(self):
+        """Overlay the current movement mode on the image."""
         mode = ''
         if self.point_movement_mode == 0:
             mode = 'AOI'
@@ -262,9 +345,24 @@ class FixationCorrection:
 
 
 class DataProcessing:
-    def __init__(self, csv_file, image_folder):
+    """Handle loading, filtering, and grouping of CSV file.
+
+    Parameters
+    ----------
+    csv_file : str
+        Path to the CSV file containing fixation data.
+    image_folder : str
+        Directory containing corresponding stimulus images.
+
+    Raises
+    ------
+    ValueError
+        If the user cancels the column-mapping dialog.
+    """
+
+    def __init__(self, csv_file: str, image_folder: str):
         self.csv_file = csv_file
-        self.dataframes = {}
+        self.dataframes: list[pd.DataFrame] = []
         self.image_folder = image_folder
         self.image_list = os.listdir(self.image_folder)
 
@@ -285,6 +383,11 @@ class DataProcessing:
         }
 
     def prepare_data(self):
+        """Prepare data for fixation correction.
+
+        Load the CSV file, remove rows without matching image files,
+        and apply grouping and filtering as specified by the user.
+        """
         raw_data = pd.read_csv(
             self.csv_file,
             sep=None,
@@ -302,9 +405,11 @@ class DataProcessing:
         return self.dataframes
 
     def normalize(self, name: str) -> str:
+        """Convert a filename to lowercase and strip its extension."""
         return Path(name).stem.lower()
 
     def filter_and_group(self, dataframe):
+        """Filter and group the dataframe based on selected values."""
         self.make_title()
         if self.column_mapping['filter_columns'] is not None:
             for key, val in self.column_mapping['filter_columns'].items():
@@ -316,10 +421,10 @@ class DataProcessing:
         if self.column_mapping['grouping'] is not None:
             grouped = dataframe.groupby(self.column_mapping['grouping'])
             return [group.copy() for _, group in grouped]
-        else:
-            return [dataframe.copy()]
+        return [dataframe.copy()]
 
     def make_title(self):
+        """Construct a title string from the selected filter values."""
         all_filters = []
         for value in self.column_mapping['filter_columns'].values():
             all_filters.append(value)
@@ -329,6 +434,7 @@ class DataProcessing:
 
 
 def run_fixation_correction(csv_file, image_folder):
+    """Start the entire fixation correction process."""
     prepared = DataProcessing(
         csv_file, image_folder,
     )
@@ -336,7 +442,7 @@ def run_fixation_correction(csv_file, image_folder):
     mapping = prepared.column_mapping
 
     corrected_dataframes = []
-    cv2.waitKey(0) & 0xFF
+    cv2.waitKey(0)
 
     for frame in dataframes:
         image_name = frame[mapping['image_column']].iloc[0]
@@ -344,7 +450,8 @@ def run_fixation_correction(csv_file, image_folder):
             if image_name in image:
                 image_path = os.path.join(image_folder, image)
                 fix = FixationCorrection(
-                    image_path, frame, mapping, frame[mapping['grouping'][0]].iloc[0],
+                    image_path, frame, mapping,
+                    frame[mapping['grouping'][0]].iloc[0],
                 )
                 fix.edit_points()
                 corrected_dataframes.append(fix.pandas_dataframe)
@@ -363,4 +470,4 @@ def run_fixation_correction(csv_file, image_folder):
         combined_dataframe.to_csv(new_path, index=False)
 
 
-# run_fixation_correction('18sat_fixfinal.csv', 'reading screenshot')
+run_fixation_correction('18sat_fixfinal.csv', 'reading screenshot')

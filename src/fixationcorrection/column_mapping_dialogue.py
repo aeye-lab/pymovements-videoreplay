@@ -31,6 +31,7 @@ import tkinter as tk
 from tkinter import messagebox
 from tkinter import simpledialog
 from tkinter import ttk
+from typing import cast
 
 
 class ColumnMappingDialog(simpledialog.Dialog):
@@ -117,7 +118,8 @@ class ColumnMappingDialog(simpledialog.Dialog):
         (
             ttk.Label(
                 master, text=(
-                    'Grouping parameters (optional) (Comma-separated); e.g. RECORDING_SESSION_LABEL, trial_number:'
+                    'Grouping parameters (optional) (Comma-separated);'
+                    ' e.g. RECORDING_SESSION_LABEL, trial_number:'
                 ),
             ).grid(row=4, column=0, sticky='w', pady=2)
         )
@@ -143,11 +145,11 @@ class ColumnMappingDialog(simpledialog.Dialog):
 
     def validate(self) -> bool:
         """Validate inputs before closing the dialog."""
-        pixel_x = self.pixel_x_entry.get().strip()
-        pixel_y = self.pixel_y_entry.get().strip()
-        image = self.image_column_entry.get().strip()
-        raw_grouping = self.grouping_entry.get().strip()
-        raw_filters = self.filters_entry.get().strip()
+        pixel_x = cast(ttk.Entry, self.pixel_x_entry).get().strip()
+        pixel_y = cast(ttk.Entry, self.pixel_y_entry).get().strip()
+        image = cast(ttk.Entry, self.image_column_entry).get().strip()
+        raw_grouping = cast(ttk.Entry, self.grouping_entry).get().strip()
+        raw_filters = cast(ttk.Entry, self.filters_entry).get().strip()
 
         if not (pixel_x and pixel_y):
             messagebox.showerror(
@@ -167,14 +169,17 @@ class ColumnMappingDialog(simpledialog.Dialog):
         if raw_grouping:
             try:
                 [v.strip() for v in raw_grouping.split('|')]
-            except Exception as err:
+            except ValueError as err:
                 messagebox.showerror('Grouping Format Error', str(err))
                 return False
 
         # Check filter format
         if raw_filters:
             try:
-                for pair in (p.strip() for p in raw_filters.split(',') if p.strip()):
+                for pair in (
+                    p.strip() for p in raw_filters.split(',')
+                    if p.strip()
+                ):
                     if '=' not in pair:
                         raise ValueError(
                             f"Missing '=' in filter pair: '{pair}'",
@@ -192,12 +197,12 @@ class ColumnMappingDialog(simpledialog.Dialog):
         return True
 
     def apply(self) -> None:
-        """Save the mapping to self.result (assumes validation already passed)."""
-        pixel_x = self.pixel_x_entry.get().strip()
-        pixel_y = self.pixel_y_entry.get().strip()
-        image = self.image_column_entry.get().strip()
-        raw_grouping = self.grouping_entry.get().strip()
-        raw_filters = self.filters_entry.get().strip()
+        """Save the mapping to self.result."""
+        pixel_x = cast(ttk.Entry, self.pixel_x_entry).get().strip()
+        pixel_y = cast(ttk.Entry, self.pixel_y_entry).get().strip()
+        image = cast(ttk.Entry, self.image_column_entry).get().strip()
+        raw_grouping = cast(ttk.Entry, self.grouping_entry).get().strip()
+        raw_filters = cast(ttk.Entry, self.filters_entry).get().strip()
 
         grouping = [
             v.strip()
@@ -207,7 +212,10 @@ class ColumnMappingDialog(simpledialog.Dialog):
 
         filters: dict[str, list[str]] = {}
         if raw_filters:
-            for pair in (p.strip() for p in raw_filters.split(',') if p.strip()):
+            for pair in (
+                p.strip() for p in raw_filters.split(',')
+                if p.strip()
+            ):
                 col, val = pair.split('=', 1)
                 values = [v.strip() for v in val.split('|') if v.strip()]
                 filters[col.strip()] = values
