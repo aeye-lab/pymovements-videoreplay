@@ -38,7 +38,8 @@ dependencies = [
   "opencv-python==4.10.0.84",
   "pandas==2.2.3",
   "pymovements==0.19.0",
-  "pytesseract==0.3.13"
+  "pytesseract==0.3.13",
+  "pynput==1.8.1"
 ]
 
 [project.urls]
