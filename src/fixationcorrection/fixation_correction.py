@@ -144,24 +144,36 @@ class FixationCorrection:
                 )  # Move right (increase x)
         elif self.point_movement_mode == 0:
             if direction == 'up':
-                self.fixation_coordinates[self.current_fixation_index] \
-                    = ocr.find_closest_top_box(
-                    x, y, self.ocr_centers,
+                self.fixation_coordinates[self.current_fixation_index] = (
+                    ocr.find_closest_top_box(
+                        x,
+                        y,
+                        self.ocr_centers,
+                    )
                 )
             elif direction == 'down':
-                self.fixation_coordinates[self.current_fixation_index] \
-                    = ocr.find_closest_bottom_box(
-                    x, y, self.ocr_centers,
+                self.fixation_coordinates[self.current_fixation_index] = (
+                    ocr.find_closest_bottom_box(
+                        x,
+                        y,
+                        self.ocr_centers,
+                    )
                 )
             elif direction == 'left':
-                self.fixation_coordinates[self.current_fixation_index] \
-                    = ocr.find_closest_left_box(
-                    x, y, self.ocr_centers,
+                self.fixation_coordinates[self.current_fixation_index] = (
+                    ocr.find_closest_left_box(
+                        x,
+                        y,
+                        self.ocr_centers,
+                    )
                 )
             elif direction == 'right':
-                self.fixation_coordinates[self.current_fixation_index] \
-                    = ocr.find_closest_right_box(
-                    x, y, self.ocr_centers,
+                self.fixation_coordinates[self.current_fixation_index] = (
+                    ocr.find_closest_right_box(
+                        x,
+                        y,
+                        self.ocr_centers,
+                    )
                 )
 
     def delete_fixation(self):
