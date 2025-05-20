@@ -480,6 +480,3 @@ def run_fixation_correction(csv_file, image_folder):
         new_filename = f"{name}_fixation_corrected_{title}{ext}"
         new_path = os.path.join(directory, new_folder_name, new_filename)
         combined_dataframe.to_csv(new_path, index=False)
-
-
-
