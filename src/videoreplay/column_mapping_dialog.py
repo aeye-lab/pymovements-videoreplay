@@ -31,7 +31,6 @@ import tkinter as tk
 from tkinter import messagebox
 from tkinter import simpledialog
 from tkinter import ttk
-from typing import cast
 
 
 class ColumnMappingDialog(simpledialog.Dialog):
@@ -83,13 +82,13 @@ class ColumnMappingDialog(simpledialog.Dialog):
 
     def __init__(self, parent: tk.Misc | None, title: str | None = None):
         super().__init__(parent, title)
-        self.pixel_x_entry = None
-        self.pixel_y_entry = None
-        self.session_entry = None
-        self.page_name_entry = None
-        self.time_entry = None
-        self.duration_entry = None
-        self.filters_entry = None
+        self.pixel_x_entry: tk.Entry | None = None
+        self.pixel_y_entry: tk.Entry | None = None
+        self.session_entry: tk.Entry | None = None
+        self.page_name_entry: tk.Entry | None = None
+        self.time_entry: tk.Entry | None = None
+        self.duration_entry: tk.Entry | None = None
+        self.filters_entry: tk.Entry | None = None
 
     def body(self, master: tk.Frame) -> tk.Entry:
         """Build and lay out the dialog widgets; return the widget to focus."""
@@ -162,13 +161,20 @@ class ColumnMappingDialog(simpledialog.Dialog):
 
     def validate(self) -> bool:
         """Validate inputs before closing the dialog."""
-        pixel_x = cast(ttk.Entry, self.pixel_x_entry).get().strip()
-        pixel_y = cast(ttk.Entry, self.pixel_y_entry).get().strip()
-        session = cast(ttk.Entry, self.session_entry).get().strip()
-        page_name = cast(ttk.Entry, self.page_name_entry).get().strip()
-        time = cast(ttk.Entry, self.time_entry).get().strip()
-        duration = cast(ttk.Entry, self.duration_entry).get().strip()
-        raw_filters = cast(ttk.Entry, self.filters_entry).get().strip()
+        pixel_x = self._get_non_optional(
+            self.pixel_x_entry, 'pixel_x_entry').get().strip()
+        pixel_y = self._get_non_optional(
+            self.pixel_y_entry, 'pixel_y_entry').get().strip()
+        session = self._get_non_optional(
+            self.session_entry, 'session_entry').get().strip()
+        page_name = self._get_non_optional(
+            self.page_name_entry, 'page_name_entry').get().strip()
+        time = self._get_non_optional(
+            self.time_entry, 'time_entry').get().strip()
+        duration = self._get_non_optional(
+            self.duration_entry, 'duration_entry').get().strip()
+        raw_filters = self._get_non_optional(
+            self.filters_entry, 'filters_entry').get().strip()
 
         if not (pixel_x and pixel_y):
             messagebox.showerror(
@@ -225,13 +231,20 @@ class ColumnMappingDialog(simpledialog.Dialog):
 
     def apply(self) -> None:
         """Save the mapping to self.result."""
-        pixel_x = cast(ttk.Entry, self.pixel_x_entry).get().strip()
-        pixel_y = cast(ttk.Entry, self.pixel_y_entry).get().strip()
-        session = cast(ttk.Entry, self.session_entry).get().strip()
-        page_name = cast(ttk.Entry, self.page_name_entry).get().strip()
-        time = cast(ttk.Entry, self.time_entry).get().strip()
-        duration = cast(ttk.Entry, self.duration_entry).get().strip()
-        raw_filters = cast(ttk.Entry, self.filters_entry).get().strip()
+        pixel_x = self._get_non_optional(
+            self.pixel_x_entry, 'pixel_x_entry').get().strip()
+        pixel_y = self._get_non_optional(
+            self.pixel_y_entry, 'pixel_y_entry').get().strip()
+        session = self._get_non_optional(
+            self.session_entry, 'session_entry').get().strip()
+        page_name = self._get_non_optional(
+            self.page_name_entry, 'page_name_entry').get().strip()
+        time = self._get_non_optional(
+            self.time_entry, 'time_entry').get().strip()
+        duration = self._get_non_optional(
+            self.duration_entry, 'duration_entry').get().strip()
+        raw_filters = self._get_non_optional(
+            self.filters_entry, 'filters_entry').get().strip()
 
         filters: dict[str, list[str]] = {}
         if raw_filters:
@@ -253,3 +266,9 @@ class ColumnMappingDialog(simpledialog.Dialog):
             'duration': duration or None,
             'filter_columns': filters,
         }
+
+    def _get_non_optional(self, entry: tk.Entry | None, name: str) -> tk.Entry:
+        """Ensure the given entry is not None and return it."""
+        if entry is None:
+            raise RuntimeError(f"{name} was not initialized")
+        return entry
