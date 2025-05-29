@@ -31,7 +31,6 @@ import tkinter as tk
 from tkinter import messagebox
 from tkinter import simpledialog
 from tkinter import ttk
-from typing import cast
 
 
 class ColumnMappingDialog(simpledialog.Dialog):
@@ -69,7 +68,7 @@ class ColumnMappingDialog(simpledialog.Dialog):
     parent : tk.Misc | None
         The parent window (can be withdrawn).
     title : str | None
-        Window title; if None, the default dialog title is used. (Default: None)
+        Window title. (Default: None)
 
     Notes
     -----
@@ -81,11 +80,11 @@ class ColumnMappingDialog(simpledialog.Dialog):
 
     def __init__(self, parent: tk.Misc | None, title: str | None = None):
         super().__init__(parent, title)
-        self.pixel_x_entry = None
-        self.pixel_y_entry = None
-        self.image_column_entry = None
-        self.grouping_entry = None
-        self.filters_entry = None
+        self.pixel_x_entry: tk.Entry | None = None
+        self.pixel_y_entry: tk.Entry | None = None
+        self.image_column_entry: tk.Entry | None = None
+        self.grouping_entry: tk.Entry | None = None
+        self.filters_entry: tk.Entry | None = None
 
     def body(self, master: tk.Frame) -> tk.Entry:
         """Build and lay out the dialog widgets; return the widget to focus."""
@@ -145,11 +144,21 @@ class ColumnMappingDialog(simpledialog.Dialog):
 
     def validate(self) -> bool:
         """Validate inputs before closing the dialog."""
-        pixel_x = cast(ttk.Entry, self.pixel_x_entry).get().strip()
-        pixel_y = cast(ttk.Entry, self.pixel_y_entry).get().strip()
-        image = cast(ttk.Entry, self.image_column_entry).get().strip()
-        raw_grouping = cast(ttk.Entry, self.grouping_entry).get().strip()
-        raw_filters = cast(ttk.Entry, self.filters_entry).get().strip()
+        pixel_x = self.get_non_optional(
+            self.pixel_x_entry, 'pixel_x_entry',
+        ).get().strip()
+        pixel_y = self.get_non_optional(
+            self.pixel_y_entry, 'pixel_y_entry',
+        ).get().strip()
+        image = self.get_non_optional(
+            self.image_column_entry, 'image_column_entry',
+        ).get().strip()
+        raw_grouping = self.get_non_optional(
+            self.grouping_entry, 'grouping_entry',
+        ).get().strip()
+        raw_filters = self.get_non_optional(
+            self.filters_entry, 'filters_entry',
+        ).get().strip()
 
         if not (pixel_x and pixel_y):
             messagebox.showerror(
@@ -168,7 +177,7 @@ class ColumnMappingDialog(simpledialog.Dialog):
         # Check grouping format
         if raw_grouping:
             try:
-                [v.strip() for v in raw_grouping.split('|')]
+                _ = [v.strip() for v in raw_grouping.split('|')]
             except ValueError as err:
                 messagebox.showerror('Grouping Format Error', str(err))
                 return False
@@ -198,11 +207,21 @@ class ColumnMappingDialog(simpledialog.Dialog):
 
     def apply(self) -> None:
         """Save the mapping to self.result."""
-        pixel_x = cast(ttk.Entry, self.pixel_x_entry).get().strip()
-        pixel_y = cast(ttk.Entry, self.pixel_y_entry).get().strip()
-        image = cast(ttk.Entry, self.image_column_entry).get().strip()
-        raw_grouping = cast(ttk.Entry, self.grouping_entry).get().strip()
-        raw_filters = cast(ttk.Entry, self.filters_entry).get().strip()
+        pixel_x = self.get_non_optional(
+            self.pixel_x_entry, 'pixel_x_entry',
+        ).get().strip()
+        pixel_y = self.get_non_optional(
+            self.pixel_y_entry, 'pixel_y_entry',
+        ).get().strip()
+        image = self.get_non_optional(
+            self.image_column_entry, 'image_column_entry',
+        ).get().strip()
+        raw_grouping = self.get_non_optional(
+            self.grouping_entry, 'grouping_entry',
+        ).get().strip()
+        raw_filters = self.get_non_optional(
+            self.filters_entry, 'filters_entry',
+        ).get().strip()
 
         grouping = [
             v.strip()
@@ -227,3 +246,9 @@ class ColumnMappingDialog(simpledialog.Dialog):
             'grouping': grouping,
             'filter_columns': filters,
         }
+
+    def get_non_optional(self, entry: tk.Entry | None, name: str) -> tk.Entry:
+        """Ensure the given entry is not None and return it."""
+        if entry is None:
+            raise RuntimeError(f"{name} was not initialized")
+        return entry
