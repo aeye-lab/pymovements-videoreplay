@@ -178,12 +178,12 @@ class VideoPlayer:
         """Return the base name **without** extension."""
         return Path(name).stem.lower()
 
-    def _is_image(self):
+    def _is_image(self) -> bool:
         """Check if the provided stimulus is an image."""
         image_extensions = ('.jpg', '.jpeg', '.png', '.bmp', '.tiff')
         return self.stimulus_path.lower().endswith(image_extensions)
 
-    def _extract_pixel_coordinates(self, pixel_value):
+    def _extract_pixel_coordinates(self, pixel_value: list | tuple | np.ndarray) -> tuple[int, int] | None:
         """Scale and clip pixel coordinates to fit the stimulus resolution."""
         # Determine stimulus size
         if self.is_image:
@@ -220,7 +220,7 @@ class VideoPlayer:
         print(f"Invalid gaze data: {pixel_value} (Type: {type(pixel_value)})")
         return None
 
-    def _normalize_timestamps(self, df: pd.DataFrame):
+    def _normalize_timestamps(self, df: pd.DataFrame) -> None:
         """Convert timestamps into corresponding frame indices."""
         if self.is_image:
             # All gaze points belong to a single frame
@@ -275,7 +275,7 @@ class VideoPlayer:
         else:
             self._play_video_stimulus(speed)
 
-    def _play_image_stimulus(self, speed: float):
+    def _play_image_stimulus(self, speed: float) -> None:
         """Handle gaze playback for an image stimulus."""
         if self.image is None:
             print('ERROR: Failed to load image stimulus.')
@@ -289,7 +289,7 @@ class VideoPlayer:
 
         cv2.destroyAllWindows()
 
-    def _play_video_stimulus(self, speed: float):
+    def _play_video_stimulus(self, speed: float) -> None:
         """Handle gaze playback for a video stimulus."""
         capture = cv2.VideoCapture(self.stimulus_path)
 
@@ -313,7 +313,7 @@ class VideoPlayer:
         capture.release()
         cv2.destroyAllWindows()
 
-    def fixation_navigation(self):
+    def fixation_navigation(self) -> None:
         """Navigate through fixations with manual controls.
 
         Displays each fixation one at a time. Press:
@@ -351,7 +351,7 @@ class VideoPlayer:
 
         return None
 
-    def _navigate_fixations_on_image(self, df: pd.DataFrame):
+    def _navigate_fixations_on_image(self, df: pd.DataFrame) -> None:
         """Handle fixation navigation for an image stimulus."""
         if self.image is None:
             print('ERROR: Failed to load image stimulus.')
@@ -392,7 +392,7 @@ class VideoPlayer:
 
         cv2.destroyAllWindows()
 
-    def _navigate_fixations_on_video(self, df: pd.DataFrame):
+    def _navigate_fixations_on_video(self, df: pd.DataFrame) -> None:
         """Handle fixation navigation for a video stimulus."""
         capture = cv2.VideoCapture(self.stimulus_path)
 
@@ -445,7 +445,7 @@ class VideoPlayer:
         capture.release()
         cv2.destroyAllWindows()
 
-    def export_replay(self, filename: str, speed: float = 1.0):
+    def export_replay(self, filename: str, speed: float = 1.0) -> None:
         """Export the gaze replay as an MP4 video.
 
         Parameters
@@ -465,7 +465,7 @@ class VideoPlayer:
         else:
             self._export_replay_video_stimulus(output_path, speed_adjusted_fps)
 
-    def _export_replay_image_stimulus(self, output_path: str, fps: float):
+    def _export_replay_image_stimulus(self, output_path: str, fps: float) -> None:
         """Handle exporting gaze replay for an image stimulus as MP4 video."""
         print('Exporting gaze replay for an image stimulus...')
 
@@ -479,7 +479,7 @@ class VideoPlayer:
         out.release()
         print(f"Image-based replay exported as MP4: {output_path}")
 
-    def _export_replay_video_stimulus(self, output_path: str, fps: float):
+    def _export_replay_video_stimulus(self, output_path: str, fps: float) -> None:
         """Handle exporting gaze replay for a video stimulus as MP4 video."""
         print('Exporting gaze replay for a video stimulus...')
 
@@ -555,7 +555,7 @@ class VideoPlayer:
 
             self._draw_legend(frame)
 
-    def _draw_legend(self, frame):
+    def _draw_legend(self, frame) -> None:
         """Draw session-color legend in the frame's top-left."""
         legend_height = 20 * len(self.gaze_dfs) + 10
         legend_width = 250
@@ -582,7 +582,7 @@ class VideoPlayer:
 
         frame[10: 10 + legend.shape[0], 10: 10 + legend.shape[1]] = legend
 
-    def _draw_progress(self, frame, current: int, total: int):
+    def _draw_progress(self, frame, current: int, total: int) -> None:
         """Draw current/total badge in the frame's top-left."""
         text = f"{current} / {total}"
 

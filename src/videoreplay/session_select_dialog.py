@@ -66,7 +66,7 @@ class SessionSelectDialog(simpledialog.Dialog):
         self.result: str | None = None
         super().__init__(parent, title)
 
-    def body(self, master):
+    def body(self, master: tk.Frame) -> tk.Listbox:
         """Create the list-box and return initial focus widget."""
         self.minsize(400, 150)
 
@@ -86,7 +86,7 @@ class SessionSelectDialog(simpledialog.Dialog):
         self._listbox.pack(padx=8, pady=(0, 8), fill='both', expand=True)
         return self._listbox
 
-    def apply(self):
+    def apply(self) -> None:
         """Save the selected session name in ``self.result``."""
         selection = self._listbox.curselection()
         if selection:
