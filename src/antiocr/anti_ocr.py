@@ -51,7 +51,7 @@ class AntiOCR:
         Text colour in BGR. (default: (0, 0, 0))
     font_thickness: int
         Stroke thickness used by ``cv2.putText``. (default: 1)
-    mapping : dict[str, str | dict[str, list[str]]] | None
+    mapping: dict[str, str | dict[str, list[str]]] | None
         Optional column mapping for gaze data.
         If None, a column-mapping dialog will be shown to the user.
         The mapping must include keys for pixel_x, pixel_y,
