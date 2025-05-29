@@ -32,9 +32,6 @@ import numpy as np
 import pandas as pd
 
 from antiocr.column_mapping_dialog import ColumnMappingDialog
-# ── standard library ────────────────────────────────────────────────
-# ── third-party libraries ───────────────────────────────────────────
-# ── local package ───────────────────────────────────────────────────
 
 
 class AntiOCR:
@@ -44,16 +41,16 @@ class AntiOCR:
 
     Parameters
     ----------
-    frame_width : int
+    frame_width: int
         Output image width in pixels.
-    frame_height : int
+    frame_height: int
         Output image height in pixels.
-    font_scale : float, optional
-        OpenCV font scale for the text. Defaults to 1.0.
-    font_color : tuple[int, int, int], optional
-        Text colour in BGR. Defaults to (0, 0, 0).
-    font_thickness : int, optional
-        Stroke thickness used by ``cv2.putText``. Defaults to 1.
+    font_scale: float
+        OpenCV font scale for the text. (default: 1.0)
+    font_color: tuple[int, int, int]
+        Text colour in BGR. (default: (0, 0, 0))
+    font_thickness: int
+        Stroke thickness used by ``cv2.putText``. (default: 1)
     """
 
     def __init__(
@@ -82,13 +79,13 @@ class AntiOCR:
 
         Parameters
         ----------
-        csv_path : str
+        csv_path: str
             Path to the eye-tracking CSV file.
-        page_name : str
+        page_name: str
             Page/stimulus identifier to extract.
-        session : str
+        session: str
             Recording-session label to extract.
-        output_path : str
+        output_path: str
             Destination image file;
             must end with ``.png``, ``.jpg``, ``.jpeg`` or ``.bmp``.
 
