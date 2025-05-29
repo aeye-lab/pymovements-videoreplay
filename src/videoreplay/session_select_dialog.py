@@ -41,12 +41,12 @@ class SessionSelectDialog(simpledialog.Dialog):
 
     Parameters
     ----------
-    parent : tk.Misc
-        The (possibly withdrawn) parent window.
-    sessions : list[str]
+    parent: tk.Misc | None
+        The parent window (can be withdrawn).
+    sessions: list[str]
         Names of the recording sessions to display.
-    title : str, optional
-        Window title. Defaults to "Select session".
+    title: str
+        Window title. (default: "Select session")
 
     Notes
     -----
@@ -57,7 +57,7 @@ class SessionSelectDialog(simpledialog.Dialog):
 
     def __init__(
             self,
-            parent: tk.Misc,
+            parent: tk.Misc | None,
             sessions: list[str],
             title: str = 'Select session',
     ):

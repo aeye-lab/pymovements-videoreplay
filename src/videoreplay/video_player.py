@@ -37,21 +37,16 @@ from videoreplay.column_mapping_dialog import ColumnMappingDialog
 from videoreplay.session_select_dialog import SessionSelectDialog
 
 
-# ── standard library ────────────────────────────────────────────────
-# ── third-party libraries ───────────────────────────────────────────
-# ── local package ───────────────────────────────────────────────────
-
-
 class VideoPlayer:
     """Handles replay of eye-tracking data on stimuli (image or video).
 
     Parameters
     ----------
-    stimulus_path : str
+    stimulus_path: str
         Path to the stimulus image or video file.
-    dataset_path : str
+    dataset_path: str
         Path to the eye-tracking CSV file.
-    recording_sessions : list[str]
+    recording_sessions: list[str]
         List of recording session labels used to filter the dataset.
 
     Raises
@@ -254,8 +249,7 @@ class VideoPlayer:
 
         # Normalize timestamps: shift them to start from 0
         min_time = df['time'].min()  # Get the first timestamp
-        df['normalized_time'] = (df['time'] - min_time) / \
-            1000.0  # Convert ms → s
+        df['normalized_time'] = (df['time'] - min_time) / 1000.0  # Convert ms → s
 
         # Convert timestamps to frame indices using FPS
         df['frame_idx'] = np.clip(
@@ -267,9 +261,10 @@ class VideoPlayer:
 
         Parameters
         ----------
-        speed : float, optional
-            Playback speed multiplier. Default is 1.0.
+        speed: float
+            Playback speed multiplier.
             Use values < 1.0 to slow down or > 1.0 to speed up playback.
+            (default: 1.0)
         """
         if not self.gaze_dfs:
             print('ERROR: No gaze data loaded!')
@@ -455,12 +450,13 @@ class VideoPlayer:
 
         Parameters
         ----------
-        filename : str
+        filename: str
             Name of the output file without extension.
             '.mp4' will be added automatically.
-        speed : float, optional
-            Playback speed multiplier. Default is 1.0.
+        speed: float
+            Playback speed multiplier.
             Use values < 1.0 to slow down or > 1.0 to speed up playback.
+            (default: 1.0)
         """
         output_path = f"{filename}.mp4"
         speed_adjusted_fps = 30 * speed
