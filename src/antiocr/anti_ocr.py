@@ -51,6 +51,12 @@ class AntiOCR:
         Text colour in BGR. (default: (0, 0, 0))
     font_thickness: int
         Stroke thickness used by ``cv2.putText``. (default: 1)
+    mapping : dict[str, str | dict[str, list[str]]] | None
+        Optional column mapping for gaze data.
+        If None, a column-mapping dialog will be shown to the user.
+        The mapping must include keys for pixel_x, pixel_y, interest_area_label,
+        recording_session, page_name, and optionally filter_columns.
+        (default: None)
     """
 
     def __init__(
@@ -60,6 +66,7 @@ class AntiOCR:
             font_scale: float = 1.0,
             font_color: tuple[int, int, int] = (0, 0, 0),
             font_thickness: int = 1,
+            mapping: dict[str, str | dict[str, list[str]]] | None = None,
     ):
         self.frame_width = frame_width
         self.frame_height = frame_height
@@ -67,6 +74,7 @@ class AntiOCR:
         self.font_color = font_color
         self.font_thickness = font_thickness
         self.font = cv2.FONT_HERSHEY_SIMPLEX
+        self.mapping = mapping
 
     def generate_from_csv(
             self,
@@ -94,13 +102,18 @@ class AntiOCR:
         ValueError
             If the user cancels the column-mapping dialog.
         """
-        root = tk.Tk()
-        root.withdraw()
-        mapping = ColumnMappingDialog(root, title='Column Mapping').result
-        root.destroy()
 
+        mapping = self.mapping
         if mapping is None:
-            raise ValueError('Column mapping configuration cancelled by user.')
+            root = tk.Tk()
+            root.withdraw()
+            mapping = ColumnMappingDialog(root, title='Column Mapping').result
+            root.destroy()
+
+            if mapping is None:
+                raise ValueError(
+                    'Column mapping configuration cancelled by user.'
+                )
 
         column_mapping = {
             mapping['pixel_x']: 'pixel_x',
@@ -140,14 +153,20 @@ class AntiOCR:
                 (df['normalized_page_name'] == normalized_stimulus_name)
             )
 
-            for col, allowed in mapping['filter_columns'].items():
-                if col not in df.columns:
-                    print(
-                        f"WARNING: Filter column '{col}' not found in data; "
-                        f"ignoring filter.",
-                    )
-                    continue
-                filter_conditions &= df[col].isin(allowed)
+            if isinstance(mapping['filter_columns'], dict):
+                for col, allowed in mapping['filter_columns'].items():
+                    if col not in df.columns:
+                        print(
+                            f"WARNING: Filter column '{col}' not found; "
+                            f"ignoring filter.",
+                        )
+                        continue
+                    filter_conditions &= df[col].isin(allowed)
+            else:
+                print(
+                    "WARNING: 'filter_columns' is not a dictionary; "
+                    "skipping filters."
+                )
 
             df = df[filter_conditions].copy()
 
