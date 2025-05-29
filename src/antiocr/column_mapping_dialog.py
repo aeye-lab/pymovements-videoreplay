@@ -91,7 +91,7 @@ class ColumnMappingDialog(simpledialog.Dialog):
         self.page_name_entry = None
         self.filters_entry = None
 
-    def body(self, master):
+    def body(self, master: tk.Frame) -> tk.Entry:
         """Build and lay out the dialog widgets; return the widget to focus."""
         self.title('Configure Column Mapping')
 
