@@ -513,7 +513,8 @@ def run_fixation_correction(
             if image_name.isin([image]).any():
                 grouping = column_mapping['grouping']
                 group_label = frame[grouping].iloc[0] if isinstance(
-                    grouping, str) else frame[grouping[0]].iloc[0]
+                    grouping, str,
+                ) else frame[grouping[0]].iloc[0]
                 image_path = os.path.join(image_folder, image)
                 fix = FixationCorrection(
                     image_path, frame, xy_mapping,
