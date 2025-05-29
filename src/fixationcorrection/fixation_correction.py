@@ -61,13 +61,14 @@ class FixationCorrection:
         self.mapping = mapping
         self.image = cv2.imread(self.image_path)
         self.current_fixation_index = 0  # Index of the current active circle
-        self.fixation_coordinates = None  # Fixations for the current image
+        # Fixations for the current image
+        self.fixation_coordinates: list[tuple[int, int]] = []
         self.title = title
         self.get_xy_coordinates()
         self.point_movement_mode = 1
-        self.ocr_centers = None
+        self.ocr_centers: list[tuple[int, int]] = []
         self.correction = True
-        self.original_fixation = None
+        self.original_fixation: tuple[int, int] | None
 
         self.get_ocr_centers()
         listener = keyboard.Listener(on_press=self.on_press)
@@ -125,57 +126,67 @@ class FixationCorrection:
 
         if not self.original_fixation:
             self.original_fixation = (x, y)
+        if self.fixation_coordinates is not None:
+            if self.point_movement_mode == 1:
 
-        if self.point_movement_mode == 1:
-            if direction == 'up':
-                self.fixation_coordinates[self.current_fixation_index] = (
-                    x, y - 1,
-                )
-            elif direction == 'down':
-                self.fixation_coordinates[self.current_fixation_index] = (
-                    x, y + 1,
-                )  # Move down (increase y)
-            elif direction == 'left':
-                self.fixation_coordinates[self.current_fixation_index] = (
-                    x - 1, y,
-                )  # Move left (decrease x)
-            elif direction == 'right':
-                self.fixation_coordinates[self.current_fixation_index] = (
-                    x + 1, y,
-                )  # Move right (increase x)
-        elif self.point_movement_mode == 0:
-            if direction == 'up':
-                self.fixation_coordinates[self.current_fixation_index] = (
-                    ocr.find_closest_top_box(
-                        x,
-                        y,
-                        self.ocr_centers,
+                if direction == 'up':
+                    self.fixation_coordinates[self.current_fixation_index] = (
+                        x, y - 1,
                     )
-                )
-            elif direction == 'down':
-                self.fixation_coordinates[self.current_fixation_index] = (
-                    ocr.find_closest_bottom_box(
-                        x,
-                        y,
-                        self.ocr_centers,
-                    )
-                )
-            elif direction == 'left':
-                self.fixation_coordinates[self.current_fixation_index] = (
-                    ocr.find_closest_left_box(
-                        x,
-                        y,
-                        self.ocr_centers,
-                    )
-                )
-            elif direction == 'right':
-                self.fixation_coordinates[self.current_fixation_index] = (
-                    ocr.find_closest_right_box(
-                        x,
-                        y,
-                        self.ocr_centers,
-                    )
-                )
+                elif direction == 'down':
+                    self.fixation_coordinates[self.current_fixation_index] = (
+                        x, y + 1,
+                    )  # Move down (increase y)
+                elif direction == 'left':
+                    self.fixation_coordinates[self.current_fixation_index] = (
+                        x - 1, y,
+                    )  # Move left (decrease x)
+                elif direction == 'right':
+                    self.fixation_coordinates[self.current_fixation_index] = (
+                        x + 1, y,
+                    )  # Move right (increase x)
+            elif self.point_movement_mode == 0:
+                if self.ocr_centers is not None:
+                    if direction == 'up':
+                        self.fixation_coordinates[
+                            self.current_fixation_index
+                        ] = (
+                            ocr.find_closest_top_box(
+                                x,
+                                y,
+                                self.ocr_centers,
+                            )
+                        )
+                    elif direction == 'down':
+                        self.fixation_coordinates[
+                            self.current_fixation_index
+                        ] = (
+                            ocr.find_closest_bottom_box(
+                                x,
+                                y,
+                                self.ocr_centers,
+                            )
+                        )
+                    elif direction == 'left':
+                        self.fixation_coordinates[
+                            self.current_fixation_index
+                        ] = (
+                            ocr.find_closest_left_box(
+                                x,
+                                y,
+                                self.ocr_centers,
+                            )
+                        )
+                    elif direction == 'right':
+                        self.fixation_coordinates[
+                            self.current_fixation_index
+                        ] = (
+                            ocr.find_closest_right_box(
+                                x,
+                                y,
+                                self.ocr_centers,
+                            )
+                        )
 
     def delete_fixation(self) -> None:
         """Mark the current fixation as deleted.
@@ -185,15 +196,17 @@ class FixationCorrection:
         x, y = self.fixation_coordinates[self.current_fixation_index]
         self.original_fixation = (x, y)
 
-        self.fixation_coordinates[self.current_fixation_index] = (-1, -1)
+        if self.fixation_coordinates:
+            self.fixation_coordinates[self.current_fixation_index] = (-1, -1)
         self.current_fixation_index = self.next_valid_fixation_index(
             self.current_fixation_index,
         )
 
     def undo_last_correction(self) -> None:
         """Restores the original position of the current fixation."""
-        self.fixation_coordinates[self.current_fixation_index] \
-            = self.original_fixation
+        if self.fixation_coordinates and self.original_fixation:
+            self.fixation_coordinates[self.current_fixation_index] \
+                = self.original_fixation
 
     def on_press(self, key: keyboard.Key | keyboard.KeyCode) -> None:
         """Handle key press events."""
@@ -215,17 +228,20 @@ class FixationCorrection:
                         self.fixation_coordinates,
                     ) - 1
             elif key == keyboard.Key.right:
-                self.current_fixation_index += 1
-                self.original_fixation = None
-                self.current_fixation_index = self.next_valid_fixation_index(
-                    self.current_fixation_index,
-                )
-                # Loop back to the first point
-                if (
-                    self.current_fixation_index >=
-                    len(self.fixation_coordinates)
-                ):
-                    self.current_fixation_index = 0
+                if self.fixation_coordinates:
+                    self.current_fixation_index += 1
+                    self.original_fixation = None
+                    self.current_fixation_index = (
+                        self.next_valid_fixation_index(
+                            self.current_fixation_index,
+                        )
+                    )
+                    # Loop back to the first point
+                    if (
+                        self.current_fixation_index >=
+                        len(self.fixation_coordinates)
+                    ):
+                        self.current_fixation_index = 0
 
             elif key.char == 'q':
                 self.move_point('left')
@@ -246,9 +262,10 @@ class FixationCorrection:
 
     def next_valid_fixation_index(self, index: int) -> int:
         """Find the next valid fixation of a given index."""
-        n = len(self.fixation_coordinates)
-        while self.is_invalid_fixation(self.fixation_coordinates[index]):
-            index = (index + 1) % n
+        if self.fixation_coordinates:
+            n = len(self.fixation_coordinates)
+            while self.is_invalid_fixation(self.fixation_coordinates[index]):
+                index = (index + 1) % n
 
         return index
 
@@ -260,9 +277,10 @@ class FixationCorrection:
 
     def previous_valid_fixation_index(self, index: int) -> int:
         """Find the previous valid fixation of a given index."""
-        n = len(self.fixation_coordinates)
-        while self.is_invalid_fixation(self.fixation_coordinates[index]):
-            index = (index - 1) % n
+        if self.fixation_coordinates:
+            n = len(self.fixation_coordinates)
+            while self.is_invalid_fixation(self.fixation_coordinates[index]):
+                index = (index - 1) % n
         return index
 
     def edit_points(self) -> None:
@@ -277,12 +295,20 @@ class FixationCorrection:
             self.display_point_movement_mode()
             # Display the image with the overlaid points
             cv2.imshow(f'Page {self.image_path}', image_with_points)
-            cv2.setWindowTitle(
-                f'Page {self.image_path}', self.image_path[
-                    :-
-                    4
-                ] + ' ' + self.title,
-            )
+            if self.title:
+                cv2.setWindowTitle(
+                    f'Page {self.image_path}', self.image_path[
+                        :-
+                        4
+                    ] + ' ' + self.title,
+                )
+            else:
+                cv2.setWindowTitle(
+                    f'Page {self.image_path}', self.image_path[
+                        :-
+                        4
+                    ],
+                )
 
             cv2.waitKey(0)
 
@@ -366,6 +392,11 @@ class DataProcessing:
         Path to the CSV file containing fixation data.
     image_folder : str
         Directory containing corresponding stimulus images.
+    mapping : dict[str,str | dict[str,list[str]]] | None
+        Optional column mapping for fixation coordinates.
+        If None, a column-mapping dialogue will be shown to the user.
+        The mapping must include keys for pixel_x, pixel_x, image_column
+        and optionally grouping and filter_columns. (Default: None)
 
     Raises
     ------
@@ -373,19 +404,27 @@ class DataProcessing:
         If the user cancels the column-mapping dialog.
     """
 
-    def __init__(self, csv_file: str, image_folder: str):
+    def __init__(
+        self, csv_file: str, image_folder: str,
+        mapping: dict[str, str | dict[str, list[str]]] | None = None,
+    ):
         self.csv_file = csv_file
         self.dataframes: list[pd.DataFrame] = []
         self.image_folder = image_folder
         self.image_list = os.listdir(self.image_folder)
 
-        root = tk.Tk()
-        root.withdraw()
-        mapping = cmd.ColumnMappingDialog(root, title='Column Mapping').result
-        root.destroy()
-
         if mapping is None:
-            raise ValueError('Column mapping configuration cancelled by user.')
+            root = tk.Tk()
+            root.withdraw()
+            mapping = cmd.ColumnMappingDialog(
+                root, title='Column Mapping',
+            ).result
+            root.destroy()
+
+            if mapping is None:
+                raise ValueError(
+                    'Column mapping configuration cancelled by user.',
+                )
 
         self.column_mapping = {
             'pixel_x': mapping['pixel_x'],
@@ -424,14 +463,16 @@ class DataProcessing:
     def filter_and_group(self, dataframe: pd.DataFrame) -> list[pd.DataFrame]:
         """Filter and group the dataframe based on selected values."""
         self.make_title()
-        if self.column_mapping['filter_columns'] is not None:
+        if self.column_mapping['filter_columns'] is not None\
+                and isinstance(self.column_mapping['filter_columns'], dict):
             for key, val in self.column_mapping['filter_columns'].items():
                 if isinstance(val, list):
                     dataframe = dataframe[dataframe[key].isin(val)]
                 else:
                     dataframe = dataframe[dataframe[key] == val]
 
-        if self.column_mapping['grouping'] is not None:
+        if self.column_mapping['grouping'] is not None \
+                and isinstance(self.column_mapping['grouping'], list):
             grouped = dataframe.groupby(self.column_mapping['grouping'])
             return [group.copy() for _, group in grouped]
         return [dataframe.copy()]
@@ -439,32 +480,44 @@ class DataProcessing:
     def make_title(self) -> str:
         """Construct a title string from the selected filter values."""
         all_filters = []
-        for value in self.column_mapping['filter_columns'].values():
-            all_filters.append(value)
+        if isinstance(self.column_mapping['filter_columns'], dict):
+            for value in self.column_mapping['filter_columns'].values():
+                all_filters.append(value)
         flattened = [item for sublist in all_filters for item in sublist]
         title = '_'.join(flattened)
         return title
 
 
-def run_fixation_correction(csv_file: str, image_folder: str) -> None:
+def run_fixation_correction(
+    csv_file: str, image_folder: str,
+    mapping: dict[str, str | dict[str, list[str]]] | None = None,
+) -> None:
     """Start the entire fixation correction process."""
     prepared = DataProcessing(
-        csv_file, image_folder,
+        csv_file, image_folder, mapping,
     )
     dataframes = prepared.prepare_data()
-    mapping = prepared.column_mapping
+    column_mapping = prepared.column_mapping
+
+    xy_mapping: dict[str, str] = {
+        'pixel_x': str(column_mapping['pixel_x']),
+        'pixel_y': str(column_mapping['pixel_y']),
+    }
 
     corrected_dataframes = []
     cv2.waitKey(0)
 
     for frame in dataframes:
-        image_name = frame[mapping['image_column']].iloc[0]
+        image_name = frame[column_mapping['image_column']].iloc[0]
         for image in os.listdir(image_folder):
-            if image_name in image:
+            if image_name.isin([image]).any():
+                grouping = column_mapping['grouping']
+                group_label = frame[grouping].iloc[0] if isinstance(
+                    grouping, str) else frame[grouping[0]].iloc[0]
                 image_path = os.path.join(image_folder, image)
                 fix = FixationCorrection(
-                    image_path, frame, mapping,
-                    frame[mapping['grouping'][0]].iloc[0],
+                    image_path, frame, xy_mapping,
+                    group_label,
                 )
                 fix.edit_points()
                 corrected_dataframes.append(fix.pandas_dataframe)
