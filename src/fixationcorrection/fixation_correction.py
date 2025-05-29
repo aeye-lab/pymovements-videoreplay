@@ -28,9 +28,14 @@ from __future__ import annotations
 import os
 import tkinter as tk
 from pathlib import Path
+from typing import Union
 
 import cv2
 import pandas as pd
+from cv2 import Mat
+from numpy import ndarray, dtype
+from pandas import DataFrame
+
 import src.fixationcorrection.column_mapping_dialogue as cmd
 import src.fixationcorrection.ocr_reader as ocr
 from pynput import keyboard
@@ -72,7 +77,7 @@ class FixationCorrection:
         listener = keyboard.Listener(on_press=self.on_press)
         listener.start()
 
-    def get_xy_coordinates(self):
+    def get_xy_coordinates(self) -> None:
         """Extract (x, y) pixel coordinates from the DataFrame."""
         xy_coordinates = list(
             zip(
@@ -84,7 +89,7 @@ class FixationCorrection:
         xy_int_coordinates = [(int(x), int(y)) for x, y in xy_coordinates]
         self.fixation_coordinates = xy_int_coordinates
 
-    def draw_points_on_image(self):
+    def draw_points_on_image(self) -> Mat | ndarray:
         """Draw fixation points and connecting lines on the image.
 
         Highlight the current fixation in orange; others are purple
@@ -113,7 +118,7 @@ class FixationCorrection:
                 )
         return self.image
 
-    def move_point(self, direction):
+    def move_point(self, direction : str) -> None:
         """Move the current fixation point.
 
         Either by one pixel (Pixel mode)
@@ -176,7 +181,7 @@ class FixationCorrection:
                     )
                 )
 
-    def delete_fixation(self):
+    def delete_fixation(self) -> None:
         """Mark the current fixation as deleted.
 
         Set coordinates to (-1, -1).
@@ -189,12 +194,12 @@ class FixationCorrection:
             self.current_fixation_index,
         )
 
-    def undo_last_correction(self):
+    def undo_last_correction(self) -> None:
         """Restores the original position of the current fixation."""
         self.fixation_coordinates[self.current_fixation_index] \
             = self.original_fixation
 
-    def on_press(self, key):
+    def on_press(self, key : Union[keyboard.Key,keyboard.KeyCode]) -> None:
         """Handle key press events."""
         try:
             if key == keyboard.Key.up:
@@ -243,7 +248,7 @@ class FixationCorrection:
         except AttributeError:
             pass
 
-    def next_valid_fixation_index(self, index):
+    def next_valid_fixation_index(self, index : int) -> int:
         """Find the next valid fixation of a given index."""
         n = len(self.fixation_coordinates)
         while self.is_invalid_fixation(self.fixation_coordinates[index]):
@@ -251,20 +256,20 @@ class FixationCorrection:
 
         return index
 
-    def is_invalid_fixation(self, fixation):
+    def is_invalid_fixation(self, fixation : tuple[int,int]) -> bool:
         """Check if a fixation has been deleted (i.e., set to (-1, -1))."""
         if fixation == (-1, -1):
             return True
         return False
 
-    def previous_valid_fixation_index(self, index):
+    def previous_valid_fixation_index(self, index : int) -> int:
         """Find the previous valid fixation of a given index."""
         n = len(self.fixation_coordinates)
         while self.is_invalid_fixation(self.fixation_coordinates[index]):
             index = (index - 1) % n
         return index
 
-    def edit_points(self):
+    def edit_points(self) -> None:
         """Launch the OpenCV image window.
 
         Enter a loop to allow user interaction for fixation correction.
@@ -291,7 +296,7 @@ class FixationCorrection:
 
         cv2.destroyAllWindows()
 
-    def save_corrected_fixations(self):
+    def save_corrected_fixations(self) -> None:
         """Save corrected fixation coordinates.
 
         Create new DataFrame columns, remove deleted fixations,
@@ -310,13 +315,13 @@ class FixationCorrection:
         ].copy()
         self.pandas_dataframe.reset_index(drop=True, inplace=True)
 
-    def get_ocr_centers(self):
+    def get_ocr_centers(self) -> None:
         """Initialize OCR reader and get center coordinates."""
         reader = ocr.OCR_Reader(self.image_path)
         reader.get_list_of_centers()
         self.ocr_centers = reader.list_of_centers
 
-    def switch_point_movement_mode(self):
+    def switch_point_movement_mode(self)-> None:
         """Toggle between Pixel- and AOI-based movement."""
         if self.point_movement_mode == 1:
             try:
@@ -326,7 +331,7 @@ class FixationCorrection:
         else:
             self.point_movement_mode = 1
 
-    def display_point_movement_mode(self):
+    def display_point_movement_mode(self) -> None:
         """Overlay the current movement mode on the image."""
         mode = ''
         if self.point_movement_mode == 0:
@@ -394,7 +399,7 @@ class DataProcessing:
             'filter_columns': mapping['filter_columns'],
         }
 
-    def prepare_data(self):
+    def prepare_data(self) -> list[DataFrame]:
         """Prepare data for fixation correction.
 
         Load the CSV file, remove rows without matching image files,
@@ -420,7 +425,7 @@ class DataProcessing:
         """Convert a filename to lowercase and strip its extension."""
         return Path(name).stem.lower()
 
-    def filter_and_group(self, dataframe):
+    def filter_and_group(self, dataframe : pd.DataFrame) -> list[pd.DataFrame]:
         """Filter and group the dataframe based on selected values."""
         self.make_title()
         if self.column_mapping['filter_columns'] is not None:
@@ -435,7 +440,7 @@ class DataProcessing:
             return [group.copy() for _, group in grouped]
         return [dataframe.copy()]
 
-    def make_title(self):
+    def make_title(self) -> str:
         """Construct a title string from the selected filter values."""
         all_filters = []
         for value in self.column_mapping['filter_columns'].values():
@@ -445,7 +450,7 @@ class DataProcessing:
         return title
 
 
-def run_fixation_correction(csv_file, image_folder):
+def run_fixation_correction(csv_file : str, image_folder : str) -> None:
     """Start the entire fixation correction process."""
     prepared = DataProcessing(
         csv_file, image_folder,
