@@ -48,7 +48,7 @@ class VideoPlayer:
         Path to the eye-tracking CSV file.
     recording_sessions: list[str]
         List of recording session labels used to filter the dataset.
-    mapping : dict[str, str | dict[str, list[str]]] | None
+    mapping: dict[str, str | dict[str, list[str]]] | None
         Optional column mapping for gaze data.
         If None, a column-mapping dialog will be shown to the user.
         The mapping must include keys for pixel_x, pixel_y, recording_session,
