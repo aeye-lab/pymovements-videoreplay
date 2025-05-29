@@ -531,9 +531,12 @@ def run_fixation_correction(
     if corrected_dataframes:
         new_folder_name = 'corrected_fixations'
         combined_dataframe = pd.concat(corrected_dataframes, ignore_index=True)
-        combined_dataframe = combined_dataframe[~(
-            (combined_dataframe['x_corrected'] == -1) &
-            (combined_dataframe['y_corrected'] == -1))].copy()
+        combined_dataframe = combined_dataframe[
+            ~(
+                (combined_dataframe['x_corrected'] == -1) &
+                (combined_dataframe['y_corrected'] == -1)
+            )
+        ].copy()
         directory = os.path.dirname(csv_file)
         os.makedirs(os.path.join(directory, new_folder_name), exist_ok=True)
         filename = os.path.basename(csv_file)
