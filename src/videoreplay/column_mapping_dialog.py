@@ -162,19 +162,26 @@ class ColumnMappingDialog(simpledialog.Dialog):
     def validate(self) -> bool:
         """Validate inputs before closing the dialog."""
         pixel_x = self._get_non_optional(
-            self.pixel_x_entry, 'pixel_x_entry').get().strip()
+            self.pixel_x_entry, 'pixel_x_entry',
+        ).get().strip()
         pixel_y = self._get_non_optional(
-            self.pixel_y_entry, 'pixel_y_entry').get().strip()
+            self.pixel_y_entry, 'pixel_y_entry',
+        ).get().strip()
         session = self._get_non_optional(
-            self.session_entry, 'session_entry').get().strip()
+            self.session_entry, 'session_entry',
+        ).get().strip()
         page_name = self._get_non_optional(
-            self.page_name_entry, 'page_name_entry').get().strip()
+            self.page_name_entry, 'page_name_entry',
+        ).get().strip()
         time = self._get_non_optional(
-            self.time_entry, 'time_entry').get().strip()
+            self.time_entry, 'time_entry',
+        ).get().strip()
         duration = self._get_non_optional(
-            self.duration_entry, 'duration_entry').get().strip()
+            self.duration_entry, 'duration_entry',
+        ).get().strip()
         raw_filters = self._get_non_optional(
-            self.filters_entry, 'filters_entry').get().strip()
+            self.filters_entry, 'filters_entry',
+        ).get().strip()
 
         if not (pixel_x and pixel_y):
             messagebox.showerror(
@@ -232,19 +239,26 @@ class ColumnMappingDialog(simpledialog.Dialog):
     def apply(self) -> None:
         """Save the mapping to self.result."""
         pixel_x = self._get_non_optional(
-            self.pixel_x_entry, 'pixel_x_entry').get().strip()
+            self.pixel_x_entry, 'pixel_x_entry',
+        ).get().strip()
         pixel_y = self._get_non_optional(
-            self.pixel_y_entry, 'pixel_y_entry').get().strip()
+            self.pixel_y_entry, 'pixel_y_entry',
+        ).get().strip()
         session = self._get_non_optional(
-            self.session_entry, 'session_entry').get().strip()
+            self.session_entry, 'session_entry',
+        ).get().strip()
         page_name = self._get_non_optional(
-            self.page_name_entry, 'page_name_entry').get().strip()
+            self.page_name_entry, 'page_name_entry',
+        ).get().strip()
         time = self._get_non_optional(
-            self.time_entry, 'time_entry').get().strip()
+            self.time_entry, 'time_entry',
+        ).get().strip()
         duration = self._get_non_optional(
-            self.duration_entry, 'duration_entry').get().strip()
+            self.duration_entry, 'duration_entry',
+        ).get().strip()
         raw_filters = self._get_non_optional(
-            self.filters_entry, 'filters_entry').get().strip()
+            self.filters_entry, 'filters_entry',
+        ).get().strip()
 
         filters: dict[str, list[str]] = {}
         if raw_filters:
