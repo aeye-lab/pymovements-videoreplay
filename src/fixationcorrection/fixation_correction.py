@@ -31,10 +31,9 @@ from pathlib import Path
 
 import cv2
 import pandas as pd
-from pandas import DataFrame
-
 import src.fixationcorrection.column_mapping_dialogue as cmd
 import src.fixationcorrection.ocr_reader as ocr
+from pandas import DataFrame
 from pynput import keyboard
 
 
@@ -115,7 +114,7 @@ class FixationCorrection:
                 )
         return self.image
 
-    def move_point(self, direction : str) -> None:
+    def move_point(self, direction: str) -> None:
         """Move the current fixation point.
 
         Either by one pixel (Pixel mode)
@@ -196,7 +195,7 @@ class FixationCorrection:
         self.fixation_coordinates[self.current_fixation_index] \
             = self.original_fixation
 
-    def on_press(self, key : keyboard.Key | keyboard.KeyCode) -> None:
+    def on_press(self, key: keyboard.Key | keyboard.KeyCode) -> None:
         """Handle key press events."""
         try:
             if key == keyboard.Key.up:
@@ -245,7 +244,7 @@ class FixationCorrection:
         except AttributeError:
             pass
 
-    def next_valid_fixation_index(self, index : int) -> int:
+    def next_valid_fixation_index(self, index: int) -> int:
         """Find the next valid fixation of a given index."""
         n = len(self.fixation_coordinates)
         while self.is_invalid_fixation(self.fixation_coordinates[index]):
@@ -253,13 +252,13 @@ class FixationCorrection:
 
         return index
 
-    def is_invalid_fixation(self, fixation : tuple[int,int]) -> bool:
+    def is_invalid_fixation(self, fixation: tuple[int, int]) -> bool:
         """Check if a fixation has been deleted (i.e., set to (-1, -1))."""
         if fixation == (-1, -1):
             return True
         return False
 
-    def previous_valid_fixation_index(self, index : int) -> int:
+    def previous_valid_fixation_index(self, index: int) -> int:
         """Find the previous valid fixation of a given index."""
         n = len(self.fixation_coordinates)
         while self.is_invalid_fixation(self.fixation_coordinates[index]):
@@ -318,7 +317,7 @@ class FixationCorrection:
         reader.get_list_of_centers()
         self.ocr_centers = reader.list_of_centers
 
-    def switch_point_movement_mode(self)-> None:
+    def switch_point_movement_mode(self) -> None:
         """Toggle between Pixel- and AOI-based movement."""
         if self.point_movement_mode == 1:
             try:
@@ -422,7 +421,7 @@ class DataProcessing:
         """Convert a filename to lowercase and strip its extension."""
         return Path(name).stem.lower()
 
-    def filter_and_group(self, dataframe : pd.DataFrame) -> list[pd.DataFrame]:
+    def filter_and_group(self, dataframe: pd.DataFrame) -> list[pd.DataFrame]:
         """Filter and group the dataframe based on selected values."""
         self.make_title()
         if self.column_mapping['filter_columns'] is not None:
@@ -447,7 +446,7 @@ class DataProcessing:
         return title
 
 
-def run_fixation_correction(csv_file : str, image_folder : str) -> None:
+def run_fixation_correction(csv_file: str, image_folder: str) -> None:
     """Start the entire fixation correction process."""
     prepared = DataProcessing(
         csv_file, image_folder,

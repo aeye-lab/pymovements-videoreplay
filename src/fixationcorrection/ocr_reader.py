@@ -63,12 +63,12 @@ import pytesseract
 from pytesseract import Output
 
 
-def distance(p1: tuple[int,int], p2: tuple[int,int]) -> float:
+def distance(p1: tuple[int, int], p2: tuple[int, int]) -> float:
     """Return the Euclidean distance between two points."""
     return math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
 
 
-def find_closest_top_box(px : int, py : int, list_of_centers : list[tuple[int,int]]) -> tuple[int,int]:
+def find_closest_top_box(px: int, py: int, list_of_centers: list[tuple[int, int]]) -> tuple[int, int]:
     """Return the closest word to the top."""
     closest_top_box = None
     closest_distance = float('inf')
@@ -82,7 +82,7 @@ def find_closest_top_box(px : int, py : int, list_of_centers : list[tuple[int,in
     return closest_top_box
 
 
-def find_closest_left_box(px : int, py : int, list_of_centers : list[tuple[int,int]]) -> tuple[int,int]:
+def find_closest_left_box(px: int, py: int, list_of_centers: list[tuple[int, int]]) -> tuple[int, int]:
     """Return the closest word to the left."""
     closest_left_box = None
     closest_distance = float('inf')
@@ -96,7 +96,7 @@ def find_closest_left_box(px : int, py : int, list_of_centers : list[tuple[int,i
     return closest_left_box
 
 
-def find_closest_bottom_box(px : int, py : int, list_of_centers : list[tuple[int,int]]) -> tuple[int,int]:
+def find_closest_bottom_box(px: int, py: int, list_of_centers: list[tuple[int, int]]) -> tuple[int, int]:
     """Return the closest word to the bottom."""
     closest_bottom_box = None
     closest_distance = float('inf')
@@ -110,7 +110,7 @@ def find_closest_bottom_box(px : int, py : int, list_of_centers : list[tuple[int
     return closest_bottom_box
 
 
-def find_closest_right_box(px : int, py : int , list_of_centers : list[tuple[int,int]]) -> tuple[int,int]:
+def find_closest_right_box(px: int, py: int, list_of_centers: list[tuple[int, int]]) -> tuple[int, int]:
     """Return the closest word to the right."""
     closest_right_box = None
     closest_distance = float('inf')
