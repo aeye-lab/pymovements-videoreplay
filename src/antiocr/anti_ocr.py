@@ -54,8 +54,9 @@ class AntiOCR:
     mapping : dict[str, str | dict[str, list[str]]] | None
         Optional column mapping for gaze data.
         If None, a column-mapping dialog will be shown to the user.
-        The mapping must include keys for pixel_x, pixel_y, interest_area_label,
-        recording_session, page_name, and optionally filter_columns.
+        The mapping must include keys for pixel_x, pixel_y,
+        interest_area_label, recording_session, page_name,
+        and optionally filter_columns.
         (default: None)
     """
 
@@ -102,7 +103,6 @@ class AntiOCR:
         ValueError
             If the user cancels the column-mapping dialog.
         """
-
         mapping = self.mapping
         if mapping is None:
             root = tk.Tk()
@@ -112,7 +112,7 @@ class AntiOCR:
 
             if mapping is None:
                 raise ValueError(
-                    'Column mapping configuration cancelled by user.'
+                    'Column mapping configuration cancelled by user.',
                 )
 
         column_mapping = {
@@ -165,7 +165,7 @@ class AntiOCR:
             else:
                 print(
                     "WARNING: 'filter_columns' is not a dictionary; "
-                    "skipping filters."
+                    'skipping filters.',
                 )
 
             df = df[filter_conditions].copy()
