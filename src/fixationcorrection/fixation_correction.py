@@ -65,7 +65,7 @@ class FixationCorrection:
         self.fixation_coordinates: list[tuple[int, int]] = []
         self.title = title
         self.get_xy_coordinates()
-        self.point_movement_mode = 1
+        self.point_movement_mode = 0
         self.ocr_centers: list[tuple[int, int]] = []
         self.correction = True
         self.original_fixation: tuple[int, int] | None
@@ -510,10 +510,15 @@ def run_fixation_correction(
     for frame in dataframes:
         image_name = frame[column_mapping['image_column']].iloc[0]
         for image in os.listdir(image_folder):
-            if image_name.isin([image]).any():
+            if image_name == Path(image).stem:
                 grouping = column_mapping['grouping']
-                group_label = frame[grouping].iloc[0] if isinstance(
-                    grouping, str) else frame[grouping[0]].iloc[0]
+                if isinstance(grouping, str):
+                    group_label: str | None = str(frame[grouping].iloc[0])
+                elif isinstance(grouping, list) and grouping:
+                    group_label = str(frame[grouping[0]].iloc[0])
+                else:
+                    group_label = None
+
                 image_path = os.path.join(image_folder, image)
                 fix = FixationCorrection(
                     image_path, frame, xy_mapping,
@@ -526,6 +531,9 @@ def run_fixation_correction(
     if corrected_dataframes:
         new_folder_name = 'corrected_fixations'
         combined_dataframe = pd.concat(corrected_dataframes, ignore_index=True)
+        combined_dataframe = combined_dataframe[~(
+            (combined_dataframe['x_corrected'] == -1) &
+            (combined_dataframe['y_corrected'] == -1))].copy()
         directory = os.path.dirname(csv_file)
         os.makedirs(os.path.join(directory, new_folder_name), exist_ok=True)
         filename = os.path.basename(csv_file)
