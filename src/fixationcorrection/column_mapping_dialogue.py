@@ -61,15 +61,15 @@ class ColumnMappingDialog(simpledialog.Dialog):
 
     Attributes
     ----------
-    result : dict | None
+    result: dict | None
         The mapping returned by the dialog, or None if the user cancelled.
 
     Parameters
     ----------
     parent : tk.Misc | None
         The parent window (can be withdrawn).
-    title : str | None, optional
-        Window title; if None, the default dialog title is used.
+    title : str | None
+        Window title; if None, the default dialog title is used. (Default: None)
 
     Notes
     -----
@@ -87,7 +87,7 @@ class ColumnMappingDialog(simpledialog.Dialog):
         self.grouping_entry = None
         self.filters_entry = None
 
-    def body(self, master):
+    def body(self, master: tk.Frame) -> tk.Entry:
         """Build and lay out the dialog widgets; return the widget to focus."""
         self.title('Configure Column Mapping')
 

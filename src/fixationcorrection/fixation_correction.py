@@ -28,12 +28,9 @@ from __future__ import annotations
 import os
 import tkinter as tk
 from pathlib import Path
-from typing import Union
 
 import cv2
 import pandas as pd
-from cv2 import Mat
-from numpy import ndarray, dtype
 from pandas import DataFrame
 
 import src.fixationcorrection.column_mapping_dialogue as cmd
@@ -52,8 +49,8 @@ class FixationCorrection:
         A DataFrame containing fixation data.
     mapping : dict[str, str]
         Dictionary mapping image names or IDs to fixation data.
-    title : str | None, optional
-        Title for the visualization window.
+    title : str | None
+        Title for the visualization window. (Default: None)
     """
 
     def __init__(
@@ -89,7 +86,7 @@ class FixationCorrection:
         xy_int_coordinates = [(int(x), int(y)) for x, y in xy_coordinates]
         self.fixation_coordinates = xy_int_coordinates
 
-    def draw_points_on_image(self) -> Mat | ndarray:
+    def draw_points_on_image(self):
         """Draw fixation points and connecting lines on the image.
 
         Highlight the current fixation in orange; others are purple
@@ -199,7 +196,7 @@ class FixationCorrection:
         self.fixation_coordinates[self.current_fixation_index] \
             = self.original_fixation
 
-    def on_press(self, key : Union[keyboard.Key,keyboard.KeyCode]) -> None:
+    def on_press(self, key : keyboard.Key | keyboard.KeyCode) -> None:
         """Handle key press events."""
         try:
             if key == keyboard.Key.up:
