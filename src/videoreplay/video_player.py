@@ -90,7 +90,7 @@ class VideoPlayer:
 
             if mapping is None:
                 raise ValueError(
-                    'Column mapping configuration cancelled by user.'
+                    'Column mapping configuration cancelled by user.',
                 )
 
         column_mapping = {
@@ -151,7 +151,7 @@ class VideoPlayer:
                 else:
                     print(
                         "WARNING: 'filter_columns' is not a dictionary; "
-                        "skipping filters."
+                        'skipping filters.',
                     )
 
                 session_df = base_df[filter_conditions].copy()
@@ -199,7 +199,10 @@ class VideoPlayer:
         image_extensions = ('.jpg', '.jpeg', '.png', '.bmp', '.tiff')
         return self.stimulus_path.lower().endswith(image_extensions)
 
-    def _extract_pixel_coordinates(self, pixel_value: list | tuple | np.ndarray) -> tuple[int, int] | None:
+    def _extract_pixel_coordinates(
+            self,
+            pixel_value: list | tuple | np.ndarray,
+    ) -> tuple[int, int] | None:
         """Scale and clip pixel coordinates to fit the stimulus resolution."""
         # Determine stimulus size
         if self.is_image:
@@ -483,7 +486,11 @@ class VideoPlayer:
         else:
             self._export_replay_video_stimulus(output_path, speed_adjusted_fps)
 
-    def _export_replay_image_stimulus(self, output_path: str, fps: float) -> None:
+    def _export_replay_image_stimulus(
+            self,
+            output_path: str,
+            fps: float,
+    ) -> None:
         """Handle exporting gaze replay for an image stimulus as MP4 video."""
         print('Exporting gaze replay for an image stimulus...')
 
@@ -497,7 +504,11 @@ class VideoPlayer:
         out.release()
         print(f"Image-based replay exported as MP4: {output_path}")
 
-    def _export_replay_video_stimulus(self, output_path: str, fps: float) -> None:
+    def _export_replay_video_stimulus(
+            self,
+            output_path: str,
+            fps: float,
+    ) -> None:
         """Handle exporting gaze replay for a video stimulus as MP4 video."""
         print('Exporting gaze replay for a video stimulus...')
 

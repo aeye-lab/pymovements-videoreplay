@@ -61,7 +61,7 @@ class SessionSelectDialog(simpledialog.Dialog):
             sessions: list[str],
             title: str = 'Select session',
     ):
-        self._listbox = None
+        self._listbox: tk.Listbox | None = None
         self._sessions = sessions
         self.result: str | None = None
         super().__init__(parent, title)
@@ -88,6 +88,7 @@ class SessionSelectDialog(simpledialog.Dialog):
 
     def apply(self) -> None:
         """Save the selected session name in ``self.result``."""
+        assert self._listbox is not None
         selection = self._listbox.curselection()
         if selection:
             self.result = self._sessions[selection[0]]
