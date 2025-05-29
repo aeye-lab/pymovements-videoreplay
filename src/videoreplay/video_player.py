@@ -48,6 +48,12 @@ class VideoPlayer:
         Path to the eye-tracking CSV file.
     recording_sessions: list[str]
         List of recording session labels used to filter the dataset.
+    mapping : dict[str, str | dict[str, list[str]]] | None
+        Optional column mapping for gaze data.
+        If None, a column-mapping dialog will be shown to the user.
+        The mapping must include keys for pixel_x, pixel_y, recording_session,
+        page_name, and optionally time, duration, and filter_columns.
+        (default: None)
 
     Raises
     ------
@@ -60,6 +66,7 @@ class VideoPlayer:
             stimulus_path: str,
             dataset_path: str,
             recording_sessions: list[str],
+            mapping: dict[str, str | dict[str, list[str]]] | None = None,
     ):
         self.stimulus_path = stimulus_path
         normalized_stimulus_name = self._normalize_stimulus_name(stimulus_path)
@@ -75,13 +82,16 @@ class VideoPlayer:
         self.dot_radius = 5
         self.gaze_dfs: list[tuple[str, pd.DataFrame]] = []
 
-        root = tk.Tk()
-        root.withdraw()
-        mapping = ColumnMappingDialog(root, title='Column Mapping').result
-        root.destroy()
-
         if mapping is None:
-            raise ValueError('Column mapping configuration cancelled by user.')
+            root = tk.Tk()
+            root.withdraw()
+            mapping = ColumnMappingDialog(root, title='Column Mapping').result
+            root.destroy()
+
+            if mapping is None:
+                raise ValueError(
+                    'Column mapping configuration cancelled by user.'
+                )
 
         column_mapping = {
             mapping['pixel_x']: 'pixel_x',
@@ -129,14 +139,20 @@ class VideoPlayer:
                     )
                 )
 
-                for col, allowed in mapping['filter_columns'].items():
-                    if col not in base_df.columns:
-                        print(
-                            f"WARNING: Filter column '{col}' not found; "
-                            f"ignoring filter.",
-                        )
-                        continue
-                    filter_conditions &= base_df[col].isin(allowed)
+                if isinstance(mapping['filter_columns'], dict):
+                    for col, allowed in mapping['filter_columns'].items():
+                        if col not in base_df.columns:
+                            print(
+                                f"WARNING: Filter column '{col}' not found; "
+                                f"ignoring filter.",
+                            )
+                            continue
+                        filter_conditions &= base_df[col].isin(allowed)
+                else:
+                    print(
+                        "WARNING: 'filter_columns' is not a dictionary; "
+                        "skipping filters."
+                    )
 
                 session_df = base_df[filter_conditions].copy()
 
