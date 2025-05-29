@@ -249,7 +249,9 @@ class VideoPlayer:
 
         # Normalize timestamps: shift them to start from 0
         min_time = df['time'].min()  # Get the first timestamp
-        df['normalized_time'] = (df['time'] - min_time) / 1000.0  # Convert ms → s
+        df['normalized_time'] = (
+            (df['time'] - min_time) / 1000.0
+        )  # Convert ms → s
 
         # Convert timestamps to frame indices using FPS
         df['frame_idx'] = np.clip(
