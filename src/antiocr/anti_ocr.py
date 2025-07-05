@@ -89,6 +89,7 @@ class AntiOCR:
             page_name: str,
             session: str,
             output_path: str,
+            custom_read_kwargs: dict[str, object] | None = None,
     ) -> int:
         """Create and save a stimulus image from a word-annotation CSV.
 
@@ -103,6 +104,11 @@ class AntiOCR:
         output_path: str
             Destination image file;
             must end with ``.png``, ``.jpg``, ``.jpeg`` or ``.bmp``.
+        custom_read_kwargs: dict[str, object] | None
+            Additional keyword arguments passed to ``pandas.read_csv``.
+            Useful for specifying delimiter (e.g., ``delimiter=','``), encoding,
+            or handling different file formats.
+            (default: None)
 
         Returns
         -------
@@ -147,13 +153,16 @@ class AntiOCR:
 
             print(f"Loading gaze data from: {csv_file}")
 
-            df = pd.read_csv(
-                csv_file,
-                sep=None,
-                engine='python',
-                encoding='utf-8-sig',
-                usecols=list(column_mapping.keys()),
-            )
+            read_kwargs = {
+                'sep': None,
+                'engine': 'python',
+                'encoding': 'utf-8-sig',
+                'usecols': list(column_mapping.keys()),
+            }
+            if custom_read_kwargs:
+                read_kwargs.update(custom_read_kwargs)
+
+            df = pd.read_csv(csv_file, **read_kwargs)
             df.rename(columns=column_mapping, inplace=True)
             df['normalized_page_name'] = df['page_name'].astype(
                 str,
