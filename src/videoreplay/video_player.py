@@ -49,7 +49,7 @@ class VideoPlayer:
         Path to the eye-tracking CSV file.
     recording_sessions: list[str]
         List of recording session labels used to filter the dataset.
-    mapping: dict[str, str | dict[str, list[str]]] | None
+    mapping: dict[str, str | dict[str, list[str]] | None] | None
         Optional column mapping for gaze data.
         If None, a column-mapping dialog will be shown to the user.
         The mapping must include keys for pixel_x, pixel_y, recording_session,
@@ -72,7 +72,10 @@ class VideoPlayer:
             stimulus_path: str,
             dataset_path: str,
             recording_sessions: list[str],
-            mapping: dict[str, str | dict[str, list[str]]] | None = None,
+            mapping: dict[
+                str,
+                str | dict[str, list[str]] | None,
+            ] | None = None,
             custom_read_kwargs: dict[str, Any] | None = None,
     ):
         self.stimulus_path = stimulus_path
@@ -113,8 +116,10 @@ class VideoPlayer:
         if mapping['duration']:
             column_mapping[mapping['duration']] = 'duration'
 
-        for filter_col in mapping['filter_columns']:
-            column_mapping[filter_col] = filter_col
+        filter_columns = mapping.get('filter_columns')
+        if isinstance(filter_columns, dict):
+            for filter_col in filter_columns:
+                column_mapping[filter_col] = filter_col
 
         read_kwargs: dict[str, Any] = {
             'sep': None,
@@ -133,8 +138,10 @@ class VideoPlayer:
             print(f"ERROR: File not found - {e}")
 
         base_df.rename(columns=column_mapping, inplace=True)
-        base_df['normalized_page_name'] = base_df['page_name'].astype(str).apply(
-            self._normalize_stimulus_name
+        base_df['normalized_page_name'] = (
+            base_df['page_name']
+            .astype(str)
+            .apply(self._normalize_stimulus_name)
         )
 
         for session in recording_sessions:
