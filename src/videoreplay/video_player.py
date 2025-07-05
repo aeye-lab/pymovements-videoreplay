@@ -28,6 +28,7 @@ import os
 import tkinter as tk
 from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 import cv2
 import numpy as np
@@ -54,6 +55,11 @@ class VideoPlayer:
         The mapping must include keys for pixel_x, pixel_y, recording_session,
         page_name, and optionally time, duration, and filter_columns.
         (default: None)
+    custom_read_kwargs: dict[str, Any] | None
+        Additional keyword arguments passed to ``pandas.read_csv``.
+        Useful for specifying delimiter (e.g., ``delimiter=','``), encoding,
+        or handling different file formats.
+        (default: None)
 
     Raises
     ------
@@ -67,6 +73,7 @@ class VideoPlayer:
             dataset_path: str,
             recording_sessions: list[str],
             mapping: dict[str, str | dict[str, list[str]]] | None = None,
+            custom_read_kwargs: dict[str, Any] | None = None,
     ):
         self.stimulus_path = stimulus_path
         normalized_stimulus_name = self._normalize_stimulus_name(stimulus_path)
@@ -110,21 +117,16 @@ class VideoPlayer:
             column_mapping[filter_col] = filter_col
 
         try:
-            csv_file = Path(dataset_path)
+            read_kwargs: dict[str, Any] = {
+                'sep': None,
+                'engine': 'python',
+                'encoding': 'utf-8-sig',
+                'usecols': list(column_mapping.keys()),
+            }
+            if custom_read_kwargs:
+                read_kwargs.update(custom_read_kwargs)
 
-            if not csv_file.is_file():
-                print(f"ERROR: CSV file not found: {dataset_path}")
-                return
-
-            print(f"Loading gaze data from: {csv_file}")
-
-            base_df = pd.read_csv(
-                csv_file,
-                sep=None,
-                engine='python',
-                encoding='utf-8-sig',
-                usecols=list(column_mapping.keys()),
-            )
+            base_df = pd.read_csv(dataset_path, **read_kwargs)
             base_df.rename(columns=column_mapping, inplace=True)
             base_df['normalized_page_name'] = base_df['page_name'].astype(
                 str,
