@@ -89,7 +89,7 @@ class AntiOCR:
             page_name: str,
             session: str,
             output_path: str,
-    ) -> None:
+    ) -> int:
         """Create and save a stimulus image from a word-annotation CSV.
 
         Parameters
@@ -103,6 +103,12 @@ class AntiOCR:
         output_path: str
             Destination image file;
             must end with ``.png``, ``.jpg``, ``.jpeg`` or ``.bmp``.
+
+        Returns
+        -------
+        int
+            0 if the image was successfully created and saved,
+            1 if an error occurred during processing.
 
         Raises
         ------
@@ -137,7 +143,7 @@ class AntiOCR:
 
             if not csv_file.is_file():
                 print(f"ERROR: CSV file not found: {csv_path}")
-                return
+                return 1
 
             print(f"Loading gaze data from: {csv_file}")
 
@@ -178,6 +184,7 @@ class AntiOCR:
 
         except (pd.errors.ParserError, FileNotFoundError) as e:
             print(f"ERROR: Failed to load gaze data - {e}")
+            return 1
 
         image = np.ones(
             (self.frame_height, self.frame_width, 3),
@@ -208,13 +215,15 @@ class AntiOCR:
                 'ERROR: Output file must have a valid image extension '
                 '(e.g., .png or .jpg)',
             )
-            return
+            return 1
 
         success = cv2.imwrite(output_path, image)
         if success:
             print(f"Stimulus image successfully saved to: {output_path}")
+            return 0
         else:
             print(f"Failed to save image to: {output_path}")
+            return 1
 
     def _normalize_stimulus_name(self, name: str) -> str:
         """Return the base name **without** extension."""
