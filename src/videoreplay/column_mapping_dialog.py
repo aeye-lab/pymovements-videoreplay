@@ -62,7 +62,7 @@ class ColumnMappingDialog(simpledialog.Dialog):
 
     Attributes
     ----------
-    result: dict | None
+    result: dict[str, str | dict[str, list[str]]] | None
         The mapping returned by the dialog, or None if the user cancelled.
 
     Parameters
@@ -78,7 +78,7 @@ class ColumnMappingDialog(simpledialog.Dialog):
     When done, read ``ColumnMappingDialog(...).result`` to get the mapping.
     """
 
-    result: dict | None
+    result: dict[str, str | dict[str, list[str]]] | None
 
     def __init__(self, parent: tk.Misc | None, title: str | None = None):
         super().__init__(parent, title)
