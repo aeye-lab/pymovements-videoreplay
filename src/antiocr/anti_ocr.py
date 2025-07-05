@@ -45,6 +45,11 @@ class AntiOCR:
         Output image width in pixels.
     frame_height: int
         Output image height in pixels.
+    font: int
+        OpenCV font face used for rendering text.
+        Must be one of OpenCV's font constants, e.g.,
+        ``cv2.FONT_HERSHEY_SIMPLEX``, ``cv2.FONT_HERSHEY_PLAIN``, etc.
+        (default: cv2.FONT_HERSHEY_SIMPLEX)
     font_scale: float
         OpenCV font scale for the text. (default: 1.0)
     font_color: tuple[int, int, int]
@@ -64,6 +69,7 @@ class AntiOCR:
             self,
             frame_width: int,
             frame_height: int,
+            font: int = cv2.FONT_HERSHEY_SIMPLEX,
             font_scale: float = 1.0,
             font_color: tuple[int, int, int] = (0, 0, 0),
             font_thickness: int = 1,
@@ -71,10 +77,10 @@ class AntiOCR:
     ):
         self.frame_width = frame_width
         self.frame_height = frame_height
+        self.font = font
         self.font_scale = font_scale
         self.font_color = font_color
         self.font_thickness = font_thickness
-        self.font = cv2.FONT_HERSHEY_SIMPLEX
         self.mapping = mapping
 
     def generate_from_csv(
@@ -149,8 +155,8 @@ class AntiOCR:
 
             normalized_stimulus_name = self._normalize_stimulus_name(page_name)
             filter_conditions = (
-                (df['recording_session'] == session) &
-                (df['normalized_page_name'] == normalized_stimulus_name)
+                    (df['recording_session'] == session) &
+                    (df['normalized_page_name'] == normalized_stimulus_name)
             )
 
             if isinstance(mapping['filter_columns'], dict):
