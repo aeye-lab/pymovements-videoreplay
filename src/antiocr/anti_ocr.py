@@ -144,56 +144,54 @@ class AntiOCR:
         for filter_col in mapping['filter_columns']:
             column_mapping[filter_col] = filter_col
 
+        csv_file = Path(csv_path)
+        print(f"Loading gaze data from: {csv_file}")
+
+        read_kwargs = {
+            'sep': None,
+            'engine': 'python',
+            'encoding': 'utf-8-sig',
+            'usecols': list(column_mapping.keys()),
+        }
+        if custom_read_kwargs:
+            read_kwargs.update(custom_read_kwargs)
+
         try:
-            csv_file = Path(csv_path)
-
-            if not csv_file.is_file():
-                print(f"ERROR: CSV file not found: {csv_path}")
-                return 1
-
-            print(f"Loading gaze data from: {csv_file}")
-
-            read_kwargs = {
-                'sep': None,
-                'engine': 'python',
-                'encoding': 'utf-8-sig',
-                'usecols': list(column_mapping.keys()),
-            }
-            if custom_read_kwargs:
-                read_kwargs.update(custom_read_kwargs)
-
             df = pd.read_csv(csv_file, **read_kwargs)
-            df.rename(columns=column_mapping, inplace=True)
-            df['normalized_page_name'] = df['page_name'].astype(
-                str,
-            ).apply(self._normalize_stimulus_name)
+        except pd.errors.ParserError as e:
+            print(f"ERROR: Failed to parse CSV - {e}")
+            return 1
+        except FileNotFoundError as e:
+            print(f"ERROR: File not found - {e}")
+            return 1
 
-            normalized_stimulus_name = self._normalize_stimulus_name(page_name)
-            filter_conditions = (
-                    (df['recording_session'] == session) &
-                    (df['normalized_page_name'] == normalized_stimulus_name)
+        df.rename(columns=column_mapping, inplace=True)
+        df['normalized_page_name'] = df['page_name'].astype(str).apply(
+            self._normalize_stimulus_name,
+        )
+
+        normalized_stimulus_name = self._normalize_stimulus_name(page_name)
+        filter_conditions = (
+                (df['recording_session'] == session) &
+                (df['normalized_page_name'] == normalized_stimulus_name)
+        )
+
+        if isinstance(mapping['filter_columns'], dict):
+            for col, allowed in mapping['filter_columns'].items():
+                if col not in df.columns:
+                    print(
+                        f"WARNING: Filter column '{col}' not found; "
+                        f"ignoring filter.",
+                    )
+                    continue
+                filter_conditions &= df[col].isin(allowed)
+        else:
+            print(
+                "WARNING: 'filter_columns' is not a dictionary; "
+                'skipping filters.',
             )
 
-            if isinstance(mapping['filter_columns'], dict):
-                for col, allowed in mapping['filter_columns'].items():
-                    if col not in df.columns:
-                        print(
-                            f"WARNING: Filter column '{col}' not found; "
-                            f"ignoring filter.",
-                        )
-                        continue
-                    filter_conditions &= df[col].isin(allowed)
-            else:
-                print(
-                    "WARNING: 'filter_columns' is not a dictionary; "
-                    'skipping filters.',
-                )
-
-            df = df[filter_conditions].copy()
-
-        except (pd.errors.ParserError, FileNotFoundError) as e:
-            print(f"ERROR: Failed to load gaze data - {e}")
-            return 1
+        df = df[filter_conditions].copy()
 
         image = np.ones(
             (self.frame_height, self.frame_width, 3),
