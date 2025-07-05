@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import tkinter as tk
 from pathlib import Path
+from typing import Any
 
 import cv2
 import numpy as np
@@ -89,7 +90,7 @@ class AntiOCR:
             page_name: str,
             session: str,
             output_path: str,
-            custom_read_kwargs: dict[str, object] | None = None,
+            custom_read_kwargs: dict[str, Any] | None = None,
     ) -> int:
         """Create and save a stimulus image from a word-annotation CSV.
 
@@ -104,10 +105,10 @@ class AntiOCR:
         output_path: str
             Destination image file;
             must end with ``.png``, ``.jpg``, ``.jpeg`` or ``.bmp``.
-        custom_read_kwargs: dict[str, object] | None
+        custom_read_kwargs: dict[str, Any] | None
             Additional keyword arguments passed to ``pandas.read_csv``.
-            Useful for specifying delimiter (e.g., ``delimiter=','``), encoding,
-            or handling different file formats.
+            Useful for specifying delimiter (e.g., ``delimiter=','``),
+            encoding, or handling different file formats.
             (default: None)
 
         Returns
@@ -144,10 +145,7 @@ class AntiOCR:
         for filter_col in mapping['filter_columns']:
             column_mapping[filter_col] = filter_col
 
-        csv_file = Path(csv_path)
-        print(f"Loading gaze data from: {csv_file}")
-
-        read_kwargs = {
+        read_kwargs: dict[str, Any] = {
             'sep': None,
             'engine': 'python',
             'encoding': 'utf-8-sig',
@@ -157,7 +155,7 @@ class AntiOCR:
             read_kwargs.update(custom_read_kwargs)
 
         try:
-            df = pd.read_csv(csv_file, **read_kwargs)
+            df = pd.read_csv(csv_path, **read_kwargs)
         except pd.errors.ParserError as e:
             print(f"ERROR: Failed to parse CSV - {e}")
             return 1
@@ -172,8 +170,8 @@ class AntiOCR:
 
         normalized_stimulus_name = self._normalize_stimulus_name(page_name)
         filter_conditions = (
-                (df['recording_session'] == session) &
-                (df['normalized_page_name'] == normalized_stimulus_name)
+            (df['recording_session'] == session) &
+            (df['normalized_page_name'] == normalized_stimulus_name)
         )
 
         if isinstance(mapping['filter_columns'], dict):
@@ -228,9 +226,9 @@ class AntiOCR:
         if success:
             print(f"Stimulus image successfully saved to: {output_path}")
             return 0
-        else:
-            print(f"Failed to save image to: {output_path}")
-            return 1
+
+        print(f"Failed to save image to: {output_path}")
+        return 1
 
     def _normalize_stimulus_name(self, name: str) -> str:
         """Return the base name **without** extension."""
