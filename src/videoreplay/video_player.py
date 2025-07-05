@@ -116,78 +116,80 @@ class VideoPlayer:
         for filter_col in mapping['filter_columns']:
             column_mapping[filter_col] = filter_col
 
+        read_kwargs: dict[str, Any] = {
+            'sep': None,
+            'engine': 'python',
+            'encoding': 'utf-8-sig',
+            'usecols': list(column_mapping.keys()),
+        }
+        if custom_read_kwargs:
+            read_kwargs.update(custom_read_kwargs)
+
         try:
-            read_kwargs: dict[str, Any] = {
-                'sep': None,
-                'engine': 'python',
-                'encoding': 'utf-8-sig',
-                'usecols': list(column_mapping.keys()),
-            }
-            if custom_read_kwargs:
-                read_kwargs.update(custom_read_kwargs)
-
             base_df = pd.read_csv(dataset_path, **read_kwargs)
-            base_df.rename(columns=column_mapping, inplace=True)
-            base_df['normalized_page_name'] = base_df['page_name'].astype(
-                str,
-            ).apply(self._normalize_stimulus_name)
+        except pd.errors.ParserError as e:
+            print(f"ERROR: Failed to parse CSV - {e}")
+        except FileNotFoundError as e:
+            print(f"ERROR: File not found - {e}")
 
-            for session in recording_sessions:
-                filter_conditions = (
-                    (base_df['recording_session'] == session) &
-                    (
-                        base_df['normalized_page_name']
-                        == normalized_stimulus_name
-                    )
+        base_df.rename(columns=column_mapping, inplace=True)
+        base_df['normalized_page_name'] = base_df['page_name'].astype(str).apply(
+            self._normalize_stimulus_name
+        )
+
+        for session in recording_sessions:
+            filter_conditions = (
+                (base_df['recording_session'] == session) &
+                (
+                    base_df['normalized_page_name']
+                    == normalized_stimulus_name
+                )
+            )
+
+            if isinstance(mapping['filter_columns'], dict):
+                for col, allowed in mapping['filter_columns'].items():
+                    if col not in base_df.columns:
+                        print(
+                            f"WARNING: Filter column '{col}' not found; "
+                            f"ignoring filter.",
+                        )
+                        continue
+                    filter_conditions &= base_df[col].isin(allowed)
+            else:
+                print(
+                    "WARNING: 'filter_columns' is not a dictionary; "
+                    'skipping filters.',
                 )
 
-                if isinstance(mapping['filter_columns'], dict):
-                    for col, allowed in mapping['filter_columns'].items():
-                        if col not in base_df.columns:
-                            print(
-                                f"WARNING: Filter column '{col}' not found; "
-                                f"ignoring filter.",
-                            )
-                            continue
-                        filter_conditions &= base_df[col].isin(allowed)
-                else:
-                    print(
-                        "WARNING: 'filter_columns' is not a dictionary; "
-                        'skipping filters.',
-                    )
+            session_df = base_df[filter_conditions].copy()
 
-                session_df = base_df[filter_conditions].copy()
-
-                if session_df.empty:
-                    print(
-                        f"WARNING: No data for session '{session}' "
-                        f"and stimulus '{normalized_stimulus_name}' found",
-                    )
-                    continue
-
-                if 'time' in session_df.columns:
-                    session_df.sort_values(by='time', inplace=True)
-                elif 'duration' in session_df.columns:
-                    session_df['time'] = session_df['duration'].cumsum().shift(
-                        fill_value=0,
-                    )
-                    session_df.sort_values(by='time', inplace=True)
-                else:
-                    print(
-                        "ERROR: Neither 'time' "
-                        "nor 'duration' column found after mapping.",
-                    )
-                    continue
-
-                session_df['pixel'] = list(
-                    zip(session_df['pixel_x'], session_df['pixel_y']),
+            if session_df.empty:
+                print(
+                    f"WARNING: No data for session '{session}' "
+                    f"and stimulus '{normalized_stimulus_name}' found",
                 )
+                continue
 
-                self._normalize_timestamps(session_df)
-                self.gaze_dfs.append((session, session_df))
+            if 'time' in session_df.columns:
+                session_df.sort_values(by='time', inplace=True)
+            elif 'duration' in session_df.columns:
+                session_df['time'] = session_df['duration'].cumsum().shift(
+                    fill_value=0,
+                )
+                session_df.sort_values(by='time', inplace=True)
+            else:
+                print(
+                    "ERROR: Neither 'time' "
+                    "nor 'duration' column found after mapping.",
+                )
+                continue
 
-        except (pd.errors.ParserError, FileNotFoundError) as e:
-            print(f"ERROR: Failed to load gaze data - {e}")
+            session_df['pixel'] = list(
+                zip(session_df['pixel_x'], session_df['pixel_y']),
+            )
+
+            self._normalize_timestamps(session_df)
+            self.gaze_dfs.append((session, session_df))
 
         if self.is_image:
             self.image = cv2.imread(self.stimulus_path)
