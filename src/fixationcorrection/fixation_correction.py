@@ -32,10 +32,9 @@ from typing import Any
 
 import cv2
 import pandas as pd
-from babel.util import missing
-
 import src.fixationcorrection.column_mapping_dialogue as cmd
 import src.fixationcorrection.ocr_reader as ocr
+from babel.util import missing
 from pandas import DataFrame
 from pynput import keyboard
 
@@ -418,11 +417,12 @@ class DataProcessing:
         self.image_list = os.listdir(self.image_folder)
 
         default_read_kwargs = {
-            "sep": None,
-            "engine": "python",
-            "encoding": "utf-8-sig",
+            'sep': None,
+            'engine': 'python',
+            'encoding': 'utf-8-sig',
         }
-        self.custom_read_kwargs = {**default_read_kwargs, **(custom_read_kwargs or {})}
+        self.custom_read_kwargs = {
+            **default_read_kwargs, **(custom_read_kwargs or {})}
 
         if mapping is None:
             root = tk.Tk()
@@ -456,14 +456,17 @@ class DataProcessing:
             raw_data = pd.read_csv(self.csv_file, **self.custom_read_kwargs)
 
             if raw_data.shape[1] <= 1:
-                raise ValueError(f'Parsing failed. The file appears to only have one column.'
-                                 'Probably the wrong delimiter was specified.'
-                                 )
+                raise ValueError(
+                    'Parsing failed. The file appears to only have one column.'
+                    'Probably the wrong delimiter was specified.',
+                )
         except UnicodeDecodeError as e:
-            raise ValueError(f'Encoding error. This may be due to an incorrect file format or an incorrect encoding - {e}')
+            raise ValueError(
+                f'Encoding error. This may be due to an incorrect file format or an incorrect encoding - {e}')
 
         except pd.errors.ParserError as e:
-            raise ValueError(f'Parsing error, probably the wrong delimiter was specified - {e}')
+            raise ValueError(
+                f'Parsing error, probably the wrong delimiter was specified - {e}')
 
         except FileNotFoundError as e:
             raise ValueError(f'File not found - {e}')
@@ -514,14 +517,16 @@ class DataProcessing:
                     dataframe = dataframe[dataframe[key] == val]
         else:
             print(
-                f"WARNING: 'filter_columns' is not a dictionary; "
+                "WARNING: 'filter_columns' is not a dictionary; "
                 f'skipping filters.',
             )
 
         if self.column_mapping['grouping'] is not None \
                 and isinstance(self.column_mapping['grouping'], list):
-            missing = [col for col in self.column_mapping['grouping'] if col not in dataframe.columns]
-            valid = [col for col in self.column_mapping['grouping'] if col in dataframe.columns]
+            missing = [col for col in self.column_mapping['grouping']
+                       if col not in dataframe.columns]
+            valid = [col for col in self.column_mapping['grouping']
+                     if col in dataframe.columns]
             if missing:
                 print(
                     f"WARNING: Grouping column(s) {missing} not found in data; "
@@ -533,7 +538,7 @@ class DataProcessing:
                 return [group.copy() for _, group in grouped]
             else:
                 print(
-                    f"WARNING: No valid grouping columns found;; "
+                    'WARNING: No valid grouping columns found;; '
                     f"skipping grouping.",
                 )
         return [dataframe.copy()]
@@ -579,7 +584,8 @@ def run_fixation_correction(
                     if grouping in frame.columns:
                         group_label = str(frame[grouping].iloc[0])
                     else:
-                        print(f"WARNING: Grouping column '{grouping}' not found in frame;")
+                        print(
+                            f"WARNING: Grouping column '{grouping}' not found in frame;")
                 elif isinstance(grouping, list) and grouping:
                     first_valid_col = None
                     for col in grouping:
