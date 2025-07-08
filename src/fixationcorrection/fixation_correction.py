@@ -32,6 +32,8 @@ from typing import Any
 
 import cv2
 import pandas as pd
+from babel.util import missing
+
 import src.fixationcorrection.column_mapping_dialogue as cmd
 import src.fixationcorrection.ocr_reader as ocr
 from pandas import DataFrame
@@ -458,10 +460,13 @@ class DataProcessing:
                                  'Probably the wrong delimiter was specified.'
                                  )
         except UnicodeDecodeError as e:
-            raise ValueError(f'Encoding error. This may be due to an incorrect file format or an incorrect encoding: ',e)
+            raise ValueError(f'Encoding error. This may be due to an incorrect file format or an incorrect encoding - {e}')
 
         except pd.errors.ParserError as e:
-            raise ValueError(f'Parsing error, probably the wrong delimiter was specified: ',e)
+            raise ValueError(f'Parsing error, probably the wrong delimiter was specified - {e}')
+
+        except FileNotFoundError as e:
+            raise ValueError(f'File not found - {e}')
 
         # Drop the entries where there is no corresponding image
         clean_list = {self.normalize(p) for p in self.image_list}
@@ -483,15 +488,54 @@ class DataProcessing:
         if self.column_mapping['filter_columns'] is not None\
                 and isinstance(self.column_mapping['filter_columns'], dict):
             for key, val in self.column_mapping['filter_columns'].items():
+                if key not in dataframe:
+                    print(
+                        f"WARNING: Filter column '{key}' not found; "
+                        f"ignoring filter.",
+                    )
+                    continue
+
+                unique_values = dataframe[key].dropna().unique()
+
                 if isinstance(val, list):
+                    missing_vals = [v for v in val if v not in unique_values]
+                    if missing_vals:
+                        print(
+                            f"WARNING: Values '{missing_vals}' not found in column '{key}'; "
+                            f"ignoring filter.",
+                        )
                     dataframe = dataframe[dataframe[key].isin(val)]
                 else:
+                    if val not in unique_values:
+                        print(
+                            f"WARNING: Values '{val}' not found in column '{key}'; "
+                            f"ignoring filter.",
+                        )
                     dataframe = dataframe[dataframe[key] == val]
+        else:
+            print(
+                f"WARNING: 'filter_columns' is not a dictionary; "
+                f'skipping filters.',
+            )
 
         if self.column_mapping['grouping'] is not None \
                 and isinstance(self.column_mapping['grouping'], list):
-            grouped = dataframe.groupby(self.column_mapping['grouping'])
-            return [group.copy() for _, group in grouped]
+            missing = [col for col in self.column_mapping['grouping'] if col not in dataframe.columns]
+            valid = [col for col in self.column_mapping['grouping'] if col in dataframe.columns]
+            if missing:
+                print(
+                    f"WARNING: Grouping column(s) {missing} not found in data; "
+                    f"skipping this grouping.",
+                )
+
+            if valid:
+                grouped = dataframe.groupby(valid)
+                return [group.copy() for _, group in grouped]
+            else:
+                print(
+                    f"WARNING: No valid grouping columns found;; "
+                    f"skipping grouping.",
+                )
         return [dataframe.copy()]
 
     def make_title(self) -> str:
@@ -530,10 +574,19 @@ def run_fixation_correction(
         for image in os.listdir(image_folder):
             if image_name == Path(image).stem:
                 grouping = column_mapping['grouping']
+                group_label: str | None = None
                 if isinstance(grouping, str):
-                    group_label: str | None = str(frame[grouping].iloc[0])
+                    if grouping in frame.columns:
+                        group_label = str(frame[grouping].iloc[0])
+                    else:
+                        print(f"WARNING: Grouping column '{grouping}' not found in frame;")
                 elif isinstance(grouping, list) and grouping:
-                    group_label = str(frame[grouping[0]].iloc[0])
+                    first_valid_col = None
+                    for col in grouping:
+                        if col in frame.columns:
+                            first_valid_col = col
+                            break
+                    group_label = str(frame[first_valid_col].iloc[0])
                 else:
                     group_label = None
 
