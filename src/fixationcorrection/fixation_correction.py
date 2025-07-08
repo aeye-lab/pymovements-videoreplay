@@ -28,6 +28,7 @@ from __future__ import annotations
 import os
 import tkinter as tk
 from pathlib import Path
+from typing import Any
 
 import cv2
 import pandas as pd
@@ -407,11 +408,19 @@ class DataProcessing:
     def __init__(
         self, csv_file: str, image_folder: str,
         mapping: dict[str, str | dict[str, list[str]]] | None = None,
+        custom_read_kwargs: dict[str, Any] | None = None,
     ):
         self.csv_file = csv_file
         self.dataframes: list[pd.DataFrame] = []
         self.image_folder = image_folder
         self.image_list = os.listdir(self.image_folder)
+
+        default_read_kwargs = {
+            "sep": None,
+            "engine": "python",
+            "encoding": "utf-8-sig",
+        }
+        self.custom_read_kwargs = {**default_read_kwargs, **(custom_read_kwargs or {})}
 
         if mapping is None:
             root = tk.Tk()
@@ -440,12 +449,20 @@ class DataProcessing:
         Load the CSV file, remove rows without matching image files,
         and apply grouping and filtering as specified by the user.
         """
-        raw_data = pd.read_csv(
-            self.csv_file,
-            sep=None,
-            engine='python',
-            encoding='utf-8-sig',
-        )
+
+        try:
+            raw_data = pd.read_csv(self.csv_file, **self.custom_read_kwargs)
+
+            if raw_data.shape[1] <= 1:
+                raise ValueError(f'Parsing failed. The file appears to only have one column.'
+                                 'Probably the wrong delimiter was specified.'
+                                 )
+        except UnicodeDecodeError as e:
+            raise ValueError(f'Encoding error. This may be due to an incorrect file format or an incorrect encoding: ',e)
+
+        except pd.errors.ParserError as e:
+            raise ValueError(f'Parsing error, probably the wrong delimiter was specified: ',e)
+
         # Drop the entries where there is no corresponding image
         clean_list = {self.normalize(p) for p in self.image_list}
         mask = raw_data[self.column_mapping['image_column']].astype(
@@ -491,10 +508,11 @@ class DataProcessing:
 def run_fixation_correction(
     csv_file: str, image_folder: str,
     mapping: dict[str, str | dict[str, list[str]]] | None = None,
+    custom_read_kwargs: dict[str, Any] | None = None,
 ) -> None:
     """Start the entire fixation correction process."""
     prepared = DataProcessing(
-        csv_file, image_folder, mapping,
+        csv_file, image_folder, mapping, custom_read_kwargs,
     )
     dataframes = prepared.prepare_data()
     column_mapping = prepared.column_mapping
