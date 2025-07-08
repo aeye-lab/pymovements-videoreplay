@@ -32,8 +32,6 @@ from typing import Any
 
 import cv2
 import pandas as pd
-from babel.util import missing
-
 import src.fixationcorrection.column_mapping_dialogue as cmd
 import src.fixationcorrection.ocr_reader as ocr
 from pandas import DataFrame
@@ -395,11 +393,14 @@ class DataProcessing:
         Path to the CSV file containing fixation data.
     image_folder : str
         Directory containing corresponding stimulus images.
-    mapping : dict[str,str | dict[str,list[str]]] | None
+    mapping : dict[str, str | list[str] | dict[str, list[str]]] | None
         Optional column mapping for fixation coordinates.
         If None, a column-mapping dialogue will be shown to the user.
         The mapping must include keys for pixel_x, pixel_x, image_column
         and optionally grouping and filter_columns. (Default: None)
+    custom_read_kwargs : dict[str, Any] | None
+        Optional keyword arguments to pass to the pandas.read_csv function.
+        (Default: None)
 
     Raises
     ------
@@ -409,7 +410,7 @@ class DataProcessing:
 
     def __init__(
         self, csv_file: str, image_folder: str,
-        mapping: dict[str, str | dict[str, list[str]]] | None = None,
+        mapping: dict[str, str | list[str] | dict[str, list[str]]] | None,
         custom_read_kwargs: dict[str, Any] | None = None,
     ):
         self.csv_file = csv_file
@@ -418,11 +419,13 @@ class DataProcessing:
         self.image_list = os.listdir(self.image_folder)
 
         default_read_kwargs = {
-            "sep": None,
-            "engine": "python",
-            "encoding": "utf-8-sig",
+            'sep': None,
+            'engine': 'python',
+            'encoding': 'utf-8-sig',
         }
-        self.custom_read_kwargs = {**default_read_kwargs, **(custom_read_kwargs or {})}
+        self.custom_read_kwargs = {
+            **default_read_kwargs, **(custom_read_kwargs or {}),
+        }
 
         if mapping is None:
             root = tk.Tk()
@@ -451,22 +454,30 @@ class DataProcessing:
         Load the CSV file, remove rows without matching image files,
         and apply grouping and filtering as specified by the user.
         """
-
         try:
             raw_data = pd.read_csv(self.csv_file, **self.custom_read_kwargs)
 
             if raw_data.shape[1] <= 1:
-                raise ValueError(f'Parsing failed. The file appears to only have one column.'
-                                 'Probably the wrong delimiter was specified.'
-                                 )
+                raise ValueError(
+                    'Parsing failed. The file appears to only have one column.'
+                    'Probably the wrong delimiter was specified.',
+                )
         except UnicodeDecodeError as e:
-            raise ValueError(f'Encoding error. This may be due to an incorrect file format or an incorrect encoding - {e}')
+            raise ValueError(
+                'Encoding error. This may be due to an incorrect file format'
+                f'or an incorrect encoding - {e}',
+            ) from e
 
         except pd.errors.ParserError as e:
-            raise ValueError(f'Parsing error, probably the wrong delimiter was specified - {e}')
+            raise ValueError(
+                f'Parsing error, probably the wrong delimiter '
+                f'was specified - {e}',
+            ) from e
 
         except FileNotFoundError as e:
-            raise ValueError(f'File not found - {e}')
+            raise ValueError(
+                f'File not found - {e}',
+            ) from e
 
         # Drop the entries where there is no corresponding image
         clean_list = {self.normalize(p) for p in self.image_list}
@@ -501,41 +512,46 @@ class DataProcessing:
                     missing_vals = [v for v in val if v not in unique_values]
                     if missing_vals:
                         print(
-                            f"WARNING: Values '{missing_vals}' not found in column '{key}'; "
+                            f"WARNING: Values '{missing_vals}' "
+                            f"not found in column '{key}'; "
                             f"ignoring filter.",
                         )
                     dataframe = dataframe[dataframe[key].isin(val)]
                 else:
                     if val not in unique_values:
                         print(
-                            f"WARNING: Values '{val}' not found in column '{key}'; "
+                            f"WARNING: Values '{val}' "
+                            f"not found in column '{key}'; "
                             f"ignoring filter.",
                         )
                     dataframe = dataframe[dataframe[key] == val]
         else:
             print(
-                f"WARNING: 'filter_columns' is not a dictionary; "
-                f'skipping filters.',
+                "WARNING: 'filter_columns' is not a dictionary; "
+                'skipping filters.',
             )
 
         if self.column_mapping['grouping'] is not None \
                 and isinstance(self.column_mapping['grouping'], list):
-            missing = [col for col in self.column_mapping['grouping'] if col not in dataframe.columns]
-            valid = [col for col in self.column_mapping['grouping'] if col in dataframe.columns]
+            missing = [
+                col for col in self.column_mapping['grouping']
+                if col not in dataframe.columns
+            ]
+            valid = [
+                col for col in self.column_mapping['grouping']
+                if col in dataframe.columns
+            ]
             if missing:
                 print(
-                    f"WARNING: Grouping column(s) {missing} not found in data; "
+                    f"WARNING: Grouping column(s) {missing} "
+                    f"not found in data; "
                     f"skipping this grouping.",
                 )
 
             if valid:
                 grouped = dataframe.groupby(valid)
                 return [group.copy() for _, group in grouped]
-            else:
-                print(
-                    f"WARNING: No valid grouping columns found;; "
-                    f"skipping grouping.",
-                )
+
         return [dataframe.copy()]
 
     def make_title(self) -> str:
@@ -551,7 +567,7 @@ class DataProcessing:
 
 def run_fixation_correction(
     csv_file: str, image_folder: str,
-    mapping: dict[str, str | dict[str, list[str]]] | None = None,
+    mapping: dict[str, str | list[str] | dict[str, list[str]]] | None,
     custom_read_kwargs: dict[str, Any] | None = None,
 ) -> None:
     """Start the entire fixation correction process."""
@@ -571,32 +587,48 @@ def run_fixation_correction(
 
     for frame in dataframes:
         image_name = frame[column_mapping['image_column']].iloc[0]
-        for image in os.listdir(image_folder):
-            if image_name == Path(image).stem:
-                grouping = column_mapping['grouping']
-                group_label: str | None = None
-                if isinstance(grouping, str):
-                    if grouping in frame.columns:
-                        group_label = str(frame[grouping].iloc[0])
-                    else:
-                        print(f"WARNING: Grouping column '{grouping}' not found in frame;")
-                elif isinstance(grouping, list) and grouping:
-                    first_valid_col = None
-                    for col in grouping:
-                        if col in frame.columns:
-                            first_valid_col = col
-                            break
-                    group_label = str(frame[first_valid_col].iloc[0])
-                else:
-                    group_label = None
 
-                image_path = os.path.join(image_folder, image)
-                fix = FixationCorrection(
-                    image_path, frame, xy_mapping,
-                    group_label,
+        # Find the first matching image
+        match = next(
+            (
+                image for image in os.listdir(image_folder)
+                if image_name == Path(image).stem
+            ), None,
+        )
+
+        if match is None:
+            print(f"WARNING: No image matching '{image_name}' found.")
+            continue
+
+        image_path = os.path.join(image_folder, match)
+        grouping = column_mapping.get('grouping')
+        group_label: str | None = None
+
+        # Handle grouping
+        if isinstance(grouping, str):
+            if grouping in frame.columns:
+                group_label = str(frame[grouping].iloc[0])
+            else:
+                print(
+                    f"WARNING: Grouping column "
+                    f"'{grouping}' not found in frame.",
                 )
-                fix.edit_points()
-                corrected_dataframes.append(fix.pandas_dataframe)
+        elif isinstance(grouping, list) and grouping:
+            for col in grouping:
+                if col in frame.columns:
+                    group_label = str(frame[col].iloc[0])
+                    break
+            else:
+                print(
+                    f"WARNING: None of the grouping columns "
+                    f"{grouping} found in frame.",
+                )
+        fix = FixationCorrection(
+            image_path, frame, xy_mapping,
+            group_label,
+        )
+        fix.edit_points()
+        corrected_dataframes.append(fix.pandas_dataframe)
 
     # save the corrected data in a new file
     if corrected_dataframes:

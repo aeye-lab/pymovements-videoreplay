@@ -52,7 +52,7 @@ class ColumnMappingDialog(simpledialog.Dialog):
             "pixel_x":                <str>,
             "pixel_y":                <str>,
             "image_column":           <str>,
-            "grouping_parameters":    <str> | None>,
+            "grouping_parameters":    list[str],
             "filter_columns":         {<str>: list[str], ...|None}
         }
 
@@ -60,7 +60,7 @@ class ColumnMappingDialog(simpledialog.Dialog):
 
     Attributes
     ----------
-    result: dict[str, str | dict[str, list[str]]] | None
+    result : dict[str, str | list[str] | dict[str, list[str]]] | None
         The mapping returned by the dialog, or None if the user cancelled.
 
     Parameters
@@ -76,7 +76,7 @@ class ColumnMappingDialog(simpledialog.Dialog):
     When done, read ``ColumnMappingDialog(...).result`` to get the mapping.
     """
 
-    result: dict[str, str | dict[str, list[str]]] | None
+    result: dict[str, str | list[str] | dict[str, list[str]]] | None
 
     def __init__(self, parent: tk.Misc | None, title: str | None = None):
         super().__init__(parent, title)
