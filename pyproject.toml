@@ -12,8 +12,8 @@ description = "Extension for pymovements to replay eye-tracking recordings with 
 readme = "README.md"
 requires-python = ">=3.9"
 authors = [
-  {name = "Kirthan Gengatharan", email = "kirthan.gengatharan@uzh.ch"},
-  {name = "Norina Braun", email = "norina.braun@uzh.ch"}
+  { name = "Kirthan Gengatharan", email = "kirthan.gengatharan@uzh.ch" },
+  { name = "Norina Braun", email = "norina.braun@uzh.ch" }
 ]
 keywords = ["eye-tracking", "gaze-overlay", "video-replay", "pymovements"]
 classifiers = [
